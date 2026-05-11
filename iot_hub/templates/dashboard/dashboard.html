@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Дашборд - IoT Hub Monitor{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="dashboard-header">
+        <h1><i class="fas fa-tachometer-alt"></i> Дашборд</h1>
+        <div class="dashboard-time">{{ now }}</div>
+    </div>
+    
+    <div class="dashboard-stats">
+        <div class="stat-card">
+            <div class="stat-icon bg-primary">
+                <i class="fas fa-cube"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ total_devices }}</h3>
+                <p>Всего устройств</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon bg-success">
+                <i class="fas fa-power-off"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ active_devices }}</h3>
+                <p>Активных</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon bg-warning">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ new_alerts }}</h3>
+                <p>Новых алертов</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon bg-danger">
+                <i class="fas fa-exclamation-circle"></i>
+            </div>
+            <div class="stat-content">
+                <h3>{{ critical_alerts }}</h3>
+                <p>Критичных</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="dashboard-grid">
+        <div class="card">
+            <div class="card-header">
+                <h3>Последние алерты</h3>
+            </div>
+            <div class="card-body">
+                <div class="alerts-list">
+                    {% for alert in recent_alerts %}
+                    <div class="alert-item alert-{{ alert.severity }}">
+                        <div class="alert-icon">
+                            <i class="fas fa-bell"></i>
+                        </div>
+                        <div class="alert-info">
+                            <h5>{{ alert.device.name }}</h5>
+                            <p>{{ alert.message }}</p>
+                            <small>{{ alert.created_at|date:"d.m.Y H:i" }}</small>
+                        </div>
+                        <div class="alert-status">
+                            <span class="badge badge-{{ alert.status }}">{{ alert.get_status_display }}</span>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p>Нет алертов</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h3>Статус устройств</h3>
+            </div>
+            <div class="card-body">
+                <div class="device-status">
+                    <div class="status-item">
+                        <span class="status-label">Активно:</span>
+                        <span class="status-value">{{ active_devices }}</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Неактивно:</span>
+                        <span class="status-value">{{ inactive_devices }}</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Ошибка:</span>
+                        <span class="status-value">{{ error_devices }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

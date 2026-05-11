@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Телеметрия - IoT Hub Monitor{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1><i class="fas fa-chart-line"></i> Телеметрия</h1>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h3>Выберите устройство</h3>
+        </div>
+        <div class="card-body">
+            <form method="get" class="filter-form">
+                <select name="device_id" class="form-control" id="device-select">
+                    <option value="">-- Все устройства --</option>
+                    {% for d in devices %}
+                    <option value="{{ d.id }}" {% if d.id == device.id %}selected{% endif %}>{{ d.name }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-primary">Показать</button>
+            </form>
+        </div>
+    </div>
+    
+    {% if device %}
+    <div class="card">
+        <div class="card-header">
+            <h3>Данные {{ device.name }}</h3>
+        </div>
+        <div class="card-body">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Метрика</th>
+                        <th>Значение</th>
+                        <th>Статус</th>
+                        <th>Время</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in telemetry %}
+                    <tr>
+                        <td>{{ t.metric.name }}</td>
+                        <td>{{ t.value }} {{ t.unit }}</td>
+                        <td><span class="badge badge-{{ t.status }}">{{ t.get_status_display }}</span></td>
+                        <td>{{ t.recorded_at|date:"d.m.Y H:i:s" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center">Нет данных</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

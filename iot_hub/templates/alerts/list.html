@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Алерты - IoT Hub Monitor{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1><i class="fas fa-bell"></i> Алерты</h1>
+        <div class="filter-badge alert-stats">
+            <span class="stat"><i class="fas fa-star"></i> Новых: {{ new_count }}</span>
+            <span class="stat"><i class="fas fa-check"></i> Подтверждено: {{ acknowledged_count }}</span>
+            <span class="stat"><i class="fas fa-check-double"></i> Разрешено: {{ resolved_count }}</span>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h3>Все алерты</h3>
+        </div>
+        <div class="card-body">
+            <div class="alerts-table">
+                {% for alert in alerts %}
+                <div class="alert-row alert-{{ alert.severity }}">
+                    <div class="alert-col alert-info-col">
+                        <div class="alert-severity">{{ alert.get_severity_display }}</div>
+                        <div class="alert-message">{{ alert.message }}</div>
+                        <div class="alert-device">{{ alert.device.name }}</div>
+                    </div>
+                    <div class="alert-col">
+                        <span class="badge badge-{{ alert.status }}">{{ alert.get_status_display }}</span>
+                    </div>
+                    <div class="alert-col">
+                        <small>{{ alert.created_at|date:"d.m.Y H:i" }}</small>
+                    </div>
+                    <div class="alert-col">
+                        <a href="#" class="btn btn-sm btn-info"><i class="fas fa-check"></i></a>
+                        <a href="#" class="btn btn-sm btn-success"><i class="fas fa-check-double"></i></a>
+                        <a href="#" class="btn btn-sm btn-danger"><i class="fas fa-times"></i></a>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-center">Нет алертов</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
