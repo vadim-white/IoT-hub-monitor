@@ -6,7 +6,7 @@
 <div class="container">
     <div class="page-header">
         <h1><i class="fas fa-network-wired"></i> Устройства</h1>
-        <a href="#" class="btn btn-primary"><i class="fas fa-plus"></i> Добавить устройство</a>
+        <button id="add-device-btn" class="btn btn-primary"><i class="fas fa-plus"></i> Добавить устройство</button>
     </div>
     
     <div class="card">
@@ -29,7 +29,9 @@
                     {% for device in devices %}
                     <tr>
                         <td>
-                            <strong>{{ device.name }}</strong>
+                            <a href="{% url 'device_detail' device.id %}" style="text-decoration: none; color: inherit;">
+                                <strong>{{ device.name }}</strong>
+                            </a>
                         </td>
                         <td>{{ device.serial_number }}</td>
                         <td>{{ device.device_type.name }}</td>
@@ -44,15 +46,15 @@
                             {% endif %}
                         </td>
                         <td>
-                            <a href="{% url 'device_detail' device.id %}" class="btn btn-sm btn-info">
+                            <button onclick="viewDeviceMetrics('{{ device.id }}', '{{ device.name }}')" class="btn btn-sm btn-info" title="Просмотр метрик">
                                 <i class="fas fa-eye"></i>
-                            </a>
-                            <a href="#" class="btn btn-sm btn-warning">
+                            </button>
+                            <button onclick="openEditDeviceModal('{{ device.id }}', '{{ device.name }}')" class="btn btn-sm btn-warning" title="Редактировать">
                                 <i class="fas fa-edit"></i>
-                            </a>
-                            <a href="#" class="btn btn-sm btn-danger">
+                            </button>
+                            <button onclick="deleteDevice('{{ device.id }}', '{{ device.name }}')" class="btn btn-sm btn-danger" title="Удалить">
                                 <i class="fas fa-trash"></i>
-                            </a>
+                            </button>
                         </td>
                     </tr>
                     {% empty %}
@@ -65,4 +67,127 @@
         </div>
     </div>
 </div>
+
+<!-- Modal for adding device -->
+<div id="addDeviceModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Добавить новое устройство</h3>
+            <span class="close" data-dismiss="modal">&times;</span>
+        </div>
+        <form id="add-device-form">
+            {% csrf_token %}
+            <div style="padding: 20px;">
+                <div class="form-group">
+                    <label for="device-name">Название устройства *</label>
+                    <input type="text" id="device-name" name="name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="device-serial">Серийный номер *</label>
+                    <input type="text" id="device-serial" name="serial_number" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="device-type">Тип устройства *</label>
+                    <select id="device-type" name="device_type" class="form-control" required>
+                        <option value="">-- Выберите тип --</option>
+                        <option value="1">Temperature Sensor (Датчик температуры)</option>
+                        <option value="2">Humidity Sensor (Датчик влажности)</option>
+                        <option value="3">Pressure Sensor (Датчик давления)</option>
+                        <option value="4">Motion Detector (Датчик движения)</option>
+                        <option value="5">Light Sensor (Датчик освещения)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="device-status">Статус</label>
+                    <select id="device-status" name="status" class="form-control">
+                        <option value="inactive">Неактивно</option>
+                        <option value="active" selected>Активно</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="device-location">Место установки</label>
+                    <input type="text" id="device-location" name="location_name" class="form-control" placeholder="Например: Офис №1, Комната 101">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Отмена</button>
+                <button type="submit" class="btn btn-primary">Добавить устройство</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal for viewing device metrics -->
+<div id="metricsModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Метрики устройства: <span id="device-name-title"></span></h3>
+            <span class="close" data-dismiss="modal">&times;</span>
+        </div>
+        <div id="metrics-content" style="padding: 20px;">
+            <!-- Динамически заполняется -->
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Закрыть</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for editing device -->
+<div id="editDeviceModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Редактировать устройство</h3>
+            <span class="close" data-dismiss="modal">&times;</span>
+        </div>
+        <form id="edit-device-form">
+            {% csrf_token %}
+            <div style="padding: 20px;">
+                <div class="form-group">
+                    <label for="edit-device-name">Название устройства *</label>
+                    <input type="text" id="edit-device-name" name="name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-device-serial">Серийный номер *</label>
+                    <input type="text" id="edit-device-serial" name="serial_number" class="form-control" required disabled>
+                </div>
+                <div class="form-group">
+                    <label for="edit-device-type">Тип устройства *</label>
+                    <select id="edit-device-type" name="device_type" class="form-control" required>
+                        <option value="">-- Выберите тип --</option>
+                        <option value="1">Датчик температуры</option>
+                        <option value="2">Датчик влажности</option>
+                        <option value="3">Датчик давления</option>
+                        <option value="4">Умная розетка</option>
+                        <option value="5">LED лампа</option>
+                        <option value="6">Контроллер</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit-device-status">Статус</label>
+                    <select id="edit-device-status" name="status" class="form-control">
+                        <option value="inactive">Неактивно</option>
+                        <option value="active">Активно</option>
+                        <option value="disconnected">Отключено</option>
+                        <option value="error">Ошибка</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit-device-location">Место установки</label>
+                    <input type="text" id="edit-device-location" name="location_name" class="form-control" placeholder="Например: Офис №1, Комната 101">
+                </div>
+                <div class="form-group">
+                    <label for="edit-device-description">Описание</label>
+                    <textarea id="edit-device-description" name="description" class="form-control" rows="3"></textarea>
+                </div>
+                <input type="hidden" id="edit-device-id" value="">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Отмена</button>
+                <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 {% endblock %}

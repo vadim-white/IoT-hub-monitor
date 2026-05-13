@@ -28,7 +28,7 @@ def get_urlpatterns():
         path('auth/logout/', account_views.logout_view, name='logout'),
         path('dashboard/', dashboard_views.dashboard, name='dashboard'),
         path('devices/', dashboard_views.devices_list, name='devices_list'),
-        path('devices/<int:device_id>/', dashboard_views.device_detail, name='device_detail'),
+        path('devices/<uuid:device_id>/', dashboard_views.device_detail, name='device_detail'),
         path('alerts/', dashboard_views.alerts_list, name='alerts_list'),
         path('telemetry/', dashboard_views.telemetry_view, name='telemetry'),
         path('profile/', account_views.profile_view, name='profile'),
@@ -65,7 +65,6 @@ class _URLPatternsProxy:
         self._ensure_loaded()
         return repr(self._patterns)
     
-    # Allow Django to iterate properly
     def __bool__(self):
         self._ensure_loaded()
         return bool(self._patterns)

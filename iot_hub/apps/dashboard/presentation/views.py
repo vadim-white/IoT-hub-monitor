@@ -8,10 +8,11 @@ from iot_hub.apps.alerts.models import Alert
 from iot_hub.apps.telemetry.models import Telemetry
 
 
-@login_required(login_url='login')
 def index(request):
     """Главная страница."""
-    return redirect('dashboard')
+    if request.user.is_authenticated:
+        return redirect('dashboard')
+    return render(request, 'home.html')
 
 
 @login_required(login_url='login')

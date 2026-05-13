@@ -10,6 +10,67 @@ from iot_hub.apps.devices.presentation.serializers import (
     DeviceSerializer, DeviceTypeSerializer, DeviceMetricSerializer, 
     AlertThresholdSerializer, DeviceCreateUpdateSerializer
 )
+import random
+
+
+def create_default_metrics(device):
+    """Создание рандомных метрик по типу устройства."""
+    device_type_name = device.device_type.name.lower() if device.device_type else ""
+    
+    # Метрики по умолчанию в зависимости от типа устройства
+    metrics_by_type = {
+        'температура': [
+            {'metric_type': 'temperature', 'name': 'Текущая температура', 'unit': '°C', 'min_value': -20, 'max_value': 60},
+            {'metric_type': 'humidity', 'name': 'Влажность', 'unit': '%', 'min_value': 0, 'max_value': 100},
+        ],
+        'влажность': [
+            {'metric_type': 'humidity', 'name': 'Уровень влажности', 'unit': '%', 'min_value': 0, 'max_value': 100},
+            {'metric_type': 'temperature', 'name': 'Температура', 'unit': '°C', 'min_value': -20, 'max_value': 60},
+        ],
+        'давление': [
+            {'metric_type': 'pressure', 'name': 'Атмосферное давление', 'unit': 'hPa', 'min_value': 900, 'max_value': 1100},
+            {'metric_type': 'temperature', 'name': 'Температура', 'unit': '°C', 'min_value': -20, 'max_value': 60},
+        ],
+        'роз': [  # Умная розетка
+            {'metric_type': 'voltage', 'name': 'Напряжение', 'unit': 'V', 'min_value': 190, 'max_value': 250},
+            {'metric_type': 'current', 'name': 'Ток', 'unit': 'A', 'min_value': 0, 'max_value': 16},
+            {'metric_type': 'power', 'name': 'Мощность', 'unit': 'W', 'min_value': 0, 'max_value': 3680},
+        ],
+        'led': [
+            {'metric_type': 'brightness', 'name': 'Яркость', 'unit': '%', 'min_value': 0, 'max_value': 100},
+            {'metric_type': 'color_temp', 'name': 'Цветовая температура', 'unit': 'K', 'min_value': 2700, 'max_value': 6500},
+        ],
+        'контролл': [
+            {'metric_type': 'status', 'name': 'Статус контроллера', 'unit': 'status', 'min_value': 0, 'max_value': 1},
+            {'metric_type': 'rssi', 'name': 'Сигнал Wi-Fi', 'unit': 'dBm', 'min_value': -100, 'max_value': -30},
+        ],
+    }
+    
+    # Поиск совпадающих метрик
+    device_metrics = None
+    for key, metrics in metrics_by_type.items():
+        if key in device_type_name:
+            device_metrics = metrics
+            break
+    
+    # Если тип не совпадает, использовать стандартные метрики
+    if not device_metrics:
+        device_metrics = [
+            {'metric_type': 'temperature', 'name': 'Температура', 'unit': '°C', 'min_value': -20, 'max_value': 60},
+            {'metric_type': 'rssi', 'name': 'Сигнал', 'unit': 'dBm', 'min_value': -100, 'max_value': -30},
+        ]
+    
+    # Создать метрики
+    for metric_data in device_metrics:
+        DeviceMetric.objects.create(
+            device=device,
+            metric_type=metric_data['metric_type'],
+            name=metric_data['name'],
+            unit=metric_data['unit'],
+            min_value=metric_data['min_value'],
+            max_value=metric_data['max_value'],
+            is_active=True
+        )
 
 
 # ====== WEB VIEWS ======
@@ -75,7 +136,9 @@ class DeviceViewSet(viewsets.ModelViewSet):
         return DeviceSerializer
     
     def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+        device = serializer.save(owner=self.request.user)
+        # Создать метрики по умолчанию для устройства
+        create_default_metrics(device)
     
     @action(detail=True, methods=['post'])
     def activate(self, request, pk=None):

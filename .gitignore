@@ -21,3 +21,6 @@ staticfiles/
 media/
 db.sqlite3
 .env.local
+DOCUMENTATION.md
+setup.sh
+.github/workflows

@@ -26,6 +26,7 @@ services:
       sh -c "mkdir -p /app/logs &&
              python manage.py makemigrations --noinput 2>&1 || true &&
              python manage.py migrate --noinput &&
+             python init_db.py &&
              gunicorn config.wsgi:application --bind 0.0.0.0:8080 --workers 4 --worker-class sync --timeout 300 --keep-alive 5 --max-requests 1000 --max-requests-jitter 50 --access-logfile - --error-logfile - --log-level info"
     volumes:
       - .:/app

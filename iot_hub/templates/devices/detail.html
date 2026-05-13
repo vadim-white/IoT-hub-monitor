@@ -30,21 +30,21 @@
                     <h3>Метрики</h3>
                 </div>
                 <div class="card-body">
-                    {% if metrics %}
+                    {% if device.metrics.all %}
                     <table class="table table-sm">
                         <thead>
                             <tr>
                                 <th>Название</th>
                                 <th>Тип</th>
                                 <th>Единица</th>
-                                <th>Пороги</th>
+                                <th>Диапазон</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for metric in metrics %}
+                            {% for metric in device.metrics.all %}
                             <tr>
                                 <td>{{ metric.name }}</td>
-                                <td>{{ metric.get_metric_type_display }}</td>
+                                <td>{{ metric.metric_type }}</td>
                                 <td>{{ metric.unit }}</td>
                                 <td>
                                     {% if metric.min_value or metric.max_value %}
@@ -58,7 +58,7 @@
                         </tbody>
                     </table>
                     {% else %}
-                    <p>Нет метрик</p>
+                    <p style="text-align: center; color: #999;">Нет метрик для этого устройства</p>
                     {% endif %}
                 </div>
             </div>
@@ -70,13 +70,87 @@
                     <h3>Действия</h3>
                 </div>
                 <div class="card-body">
-                    <a href="#" class="btn btn-block btn-primary"><i class="fas fa-edit"></i> Редактировать</a>
-                    <a href="#" class="btn btn-block btn-warning"><i class="fas fa-cog"></i> Настройки</a>
-                    <a href="#" class="btn btn-block btn-info"><i class="fas fa-chart-line"></i> График</a>
-                    <a href="#" class="btn btn-block btn-danger"><i class="fas fa-trash"></i> Удалить</a>
+                    <button onclick="editDevice('{{ device.id }}')" class="btn btn-block btn-primary"><i class="fas fa-edit"></i> Редактировать</button>
+                    <button onclick="showSettings('{{ device.id }}')" class="btn btn-block btn-warning"><i class="fas fa-cog"></i> Настройки</button>
+                    <button onclick="showChart('{{ device.id }}', '{{ device.name }}')" class="btn btn-block btn-info"><i class="fas fa-chart-line"></i> График</button>
+                    <button onclick="deleteDevice('{{ device.id }}', '{{ device.name }}')" class="btn btn-block btn-danger"><i class="fas fa-trash"></i> Удалить</button>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Modal for editing device -->
+<div id="editDeviceModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Редактировать устройство</h3>
+            <span class="close" data-dismiss="modal">&times;</span>
+        </div>
+        <form id="edit-device-form">
+            {% csrf_token %}
+            <div style="padding: 20px;">
+                <div class="form-group">
+                    <label for="edit-device-name">Название устройства *</label>
+                    <input type="text" id="edit-device-name" name="name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-device-serial">Серийный номер *</label>
+                    <input type="text" id="edit-device-serial" name="serial_number" class="form-control" required disabled>
+                </div>
+                <div class="form-group">
+                    <label for="edit-device-type">Тип устройства *</label>
+                    <select id="edit-device-type" name="device_type" class="form-control" required>
+                        <option value="">-- Выберите тип --</option>
+                        <option value="1">Датчик температуры</option>
+                        <option value="2">Датчик влажности</option>
+                        <option value="3">Датчик давления</option>
+                        <option value="4">Умная розетка</option>
+                        <option value="5">LED лампа</option>
+                        <option value="6">Контроллер</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit-device-status">Статус</label>
+                    <select id="edit-device-status" name="status" class="form-control">
+                        <option value="inactive">Неактивно</option>
+                        <option value="active">Активно</option>
+                        <option value="disconnected">Отключено</option>
+                        <option value="error">Ошибка</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit-device-location">Место установки</label>
+                    <input type="text" id="edit-device-location" name="location_name" class="form-control" placeholder="Например: Офис №1, Комната 101">
+                </div>
+                <div class="form-group">
+                    <label for="edit-device-description">Описание</label>
+                    <textarea id="edit-device-description" name="description" class="form-control" rows="3"></textarea>
+                </div>
+                <input type="hidden" id="edit-device-id" value="">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Отмена</button>
+                <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal for viewing chart -->
+<div id="chartModal" class="modal">
+    <div class="modal-content" style="max-width: 900px;">
+        <div class="modal-header">
+            <h3>График <span id="chart-title"></span></h3>
+            <span class="close" data-dismiss="modal">&times;</span>
+        </div>
+        <div style="padding: 20px;">
+            <canvas id="telemetryChart" height="300"></canvas>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Закрыть</button>
+        </div>
+    </div>
+</div>
+
 {% endblock %}

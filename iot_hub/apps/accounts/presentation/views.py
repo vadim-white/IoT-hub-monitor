@@ -134,9 +134,16 @@ class UserViewSet(viewsets.ModelViewSet):
         """Регистрация нового пользователя."""
         serializer = UserRegistrationSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            user = serializer.save()
             return Response(
-                {"message": "Пользователь успешно зарегистрирован"},
+                {
+                    "id": user.id,
+                    "username": user.username,
+                    "email": user.email,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "message": "Пользователь успешно зарегистрирован"
+                },
                 status=status.HTTP_201_CREATED
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
