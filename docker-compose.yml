@@ -1,3 +1,4 @@
+name: iot_hub 
 services:
   db:
     image: postgres:15
@@ -15,11 +16,6 @@ services:
       timeout: 5s
       retries: 5
 
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-
   web:
     build: .
     command: >
@@ -27,7 +23,8 @@ services:
              python manage.py makemigrations --noinput 2>&1 || true &&
              python manage.py migrate --noinput &&
              python init_db.py &&
-             gunicorn config.wsgi:application --bind 0.0.0.0:8080 --workers 4 --worker-class sync --timeout 300 --keep-alive 5 --max-requests 1000 --max-requests-jitter 50 --access-logfile - --error-logfile - --log-level info"
+             python load_telemetry_data.py &&
+             gunicorn iot_hub.config.wsgi:application --bind 0.0.0.0:8080 --workers 4 --worker-class sync --timeout 300 --keep-alive 5 --max-requests 1000 --max-requests-jitter 50 --access-logfile - --error-logfile - --log-level info"
     volumes:
       - .:/app
       - static_volume:/app/staticfiles
@@ -36,7 +33,7 @@ services:
       - "8080:8080"
     environment:
       PYTHONPATH: /app:/app/iot_hub
-      DJANGO_SETTINGS_MODULE: config.settings
+      DJANGO_SETTINGS_MODULE: iot_hub.config.settings
       DEBUG: "True"
       DATABASE_ENGINE: django.db.backends.postgresql
       DATABASE_NAME: iot_hub_db
@@ -44,7 +41,6 @@ services:
       DATABASE_PASSWORD: postgres
       DATABASE_HOST: db
       DATABASE_PORT: 5432
-      REDIS_URL: redis://redis:6379/0
       SECRET_KEY: your-secret-key-change-in-production
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/admin/"]
@@ -55,8 +51,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      redis:
-        condition: service_started
 
 volumes:
   postgres_data:

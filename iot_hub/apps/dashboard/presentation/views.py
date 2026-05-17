@@ -18,6 +18,9 @@ def index(request):
 @login_required(login_url='login')
 def dashboard(request):
     """Главный дашборд системы."""
+    import json
+    from django.db.models import Avg
+    
     user = request.user
     
     # Определяем доступные устройства - с select_related для оптимизации
@@ -68,6 +71,54 @@ def dashboard(request):
     five_min_ago = timezone.now() - timedelta(minutes=5)
     active_now_count = devices_qs.filter(last_seen_at__gte=five_min_ago).count()
     
+    # Данные для графиков - группируем по типам метрик
+    charts_data = []
+    
+    # Ключевые метрики для визуализации
+    metric_groups = [
+        {'name': 'Температура', 'metric_type': 'temperature', 'unit': '°C'},
+        {'name': 'Влажность', 'metric_type': 'humidity', 'unit': '%'},
+        {'name': 'Мощность', 'metric_type': 'power', 'unit': 'Wh'},
+    ]
+    
+    for group in metric_groups:
+        # Получаем все устройства с данным типом метрики
+        devices_with_metric = Device.objects.filter(
+            metrics__metric_type=group['metric_type'],
+            metrics__is_active=True
+        ).prefetch_related('telemetry')
+        
+        if is_admin:
+            pass  # уже все
+        else:
+            devices_with_metric = devices_with_metric.filter(owner=user)
+        
+        chart_devices = []
+        
+        for device in devices_with_metric[:6]:  # Макс 6 линий на графике
+            # Получаем последние 30 дней данных
+            telemetry_data = Telemetry.objects.filter(
+                device=device,
+                metric__metric_type=group['metric_type']
+            ).order_by('recorded_at')[:30]
+            
+            if telemetry_data.exists():
+                labels = [t.recorded_at.strftime('%d.%m') for t in telemetry_data]
+                values = [t.value for t in telemetry_data]
+                
+                chart_devices.append({
+                    'name': device.name,
+                    'labels': labels,
+                    'values': values,
+                })
+        
+        if chart_devices:
+            charts_data.append({
+                'title': group['name'],
+                'unit': group['unit'],
+                'devices': chart_devices,
+            })
+    
     context = {
         'total_devices': devices_stats['total'],
         'active_devices': devices_stats['active'],
@@ -79,6 +130,7 @@ def dashboard(request):
         'recent_alerts': recent_alerts,
         'recent_telemetry': recent_telemetry,
         'active_now': active_now_count,
+        'charts_data': json.dumps(charts_data),
     }
     
     return render(request, 'dashboard/dashboard.html', context)

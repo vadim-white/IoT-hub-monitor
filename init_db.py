@@ -1,35 +1,44 @@
 #!/usr/bin/env python
 """
-Скрипт инициализации БД - создает админа если его нет
+Скрипт инициализации БД - проверяет админа и его роль.
+Основное создание админа происходит в миграции accounts/0002_create_admin_user.py
 """
 import os
+import sys
 import django
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'iot_hub.config.settings')
 django.setup()
 
 from django.contrib.auth.models import User
-from iot_hub.apps.accounts.models import UserRole, UserProfile
+from iot_hub.apps.accounts.models import UserRole
 
-def init_admin():
-    """Создает админа если его нет"""
-    if User.objects.filter(username='admin').exists():
-        print("Admin user already exists")
-        return
+
+def ensure_admin():
+    """Проверяет/создает админа и его роль если их нет."""
+    admin = User.objects.filter(username='admin').first()
     
-    admin = User.objects.create_superuser(
-        username='admin',
-        email='admin@mail.ru',
-        password='12345'
-    )
+    if not admin:
+        # На случай если миграция не отработала
+        admin = User.objects.create_superuser(
+            username='admin',
+            email='admin@mail.ru',
+            password='12345'
+        )
+        print("⚠️  Администратор создан скриптом (миграция могла не отработать)")
     
-    # Установи роль админа
-    admin_role = UserRole.objects.get(user=admin)
-    admin_role.role = 'admin'
-    admin_role.save()
+    # Проверяем роль
+    try:
+        role = admin.role
+        print(f"✅ Администратор: {admin.username} (роль: {role.role})")
+    except UserRole.DoesNotExist:
+        # На случай если роль не создалась в миграции
+        UserRole.objects.create(user=admin, role='admin')
+        print(f"✅ Администратор: {admin.username} (роль создана)")
     
-    print(f"Created admin user: admin@mail.ru / 12345 (role: admin)")
     return admin
 
+
 if __name__ == '__main__':
-    init_admin()
+    ensure_admin()

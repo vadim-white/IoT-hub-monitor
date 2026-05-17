@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 from iot_hub.apps.devices.models import Device, DeviceMetric
 
 
@@ -17,7 +18,7 @@ class Telemetry(models.Model):
     
     raw_data = models.JSONField(default=dict, blank=True)
     
-    recorded_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    recorded_at = models.DateTimeField(db_index=True, default=timezone.now)
     
     class Meta:
         verbose_name = 'Телеметрия'

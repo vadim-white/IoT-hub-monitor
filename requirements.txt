@@ -3,8 +3,6 @@ djangorestframework==3.14.0
 psycopg2-binary==2.9.9
 python-decouple==3.8
 Pillow==10.1.0
-celery==5.3.4
-redis==5.0.1
 pytest==7.4.3
 pytest-django==4.7.0
 pytest-cov==4.1.0
@@ -16,3 +14,4 @@ gunicorn==21.2.0
 whitenoise==6.6.0
 cryptography==41.0.7
 daphne==4.0.0
+pandas==2.2.0

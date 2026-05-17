@@ -9,6 +9,7 @@
         <div class="dashboard-time">{{ now }}</div>
     </div>
     
+    <!-- Stats Section -->
     <div class="dashboard-stats">
         <div class="stat-card">
             <div class="stat-icon bg-primary">
@@ -48,6 +49,14 @@
                 <h3>{{ critical_alerts }}</h3>
                 <p>Критичных</p>
             </div>
+        </div>
+    </div>
+    
+    <!-- Раздел графиков метрик -->
+    <div class="charts-section">
+        <h2><i class="fas fa-chart-line"></i> Мониторинг метрик (30 дней)</h2>
+        <div class="charts-grid">
+            <div class="chart-container" id="chartsContainer"></div>
         </div>
     </div>
     
@@ -102,4 +111,438 @@
         </div>
     </div>
 </div>
+
+<!-- Chart.js для графиков -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+
+<style>
+    /* Dashboard Header */
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        padding: 20px 0;
+        border-bottom: 1px solid #E2E8F0;
+    }
+    
+    .dashboard-header h1 {
+        color: #1A1A1A;
+        font-size: 1.8rem;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .dashboard-time {
+        color: #718096;
+        font-size: 0.95rem;
+    }
+    
+    /* Stats Section - FIXED */
+    .dashboard-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 40px;
+    }
+    
+    .stat-card {
+        background: #FFFFFF;
+        border-radius: 16px;
+        padding: 24px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+        border: 1px solid #E2E8F0;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 30px rgba(90, 103, 216, 0.15);
+    }
+    
+    .stat-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    
+    .stat-icon i {
+        font-size: 1.5rem;
+        color: #FFFFFF;
+    }
+    
+    /* Background colors for icons */
+    .bg-primary { background: linear-gradient(135deg, #5A67D8 0%, #667EEA 100%); }
+    .bg-success { background: linear-gradient(135deg, #38A169 0%, #48BB78 100%); }
+    .bg-warning { background: linear-gradient(135deg, #D69E2E 0%, #ECC94B 100%); }
+    .bg-danger { background: linear-gradient(135deg, #E53E3E 0%, #F56565 100%); }
+    
+    .stat-content h3 {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #1A1A1A;
+        margin: 0 0 4px 0;
+        line-height: 1.2;
+    }
+    
+    .stat-content p {
+        color: #718096;
+        font-size: 0.9rem;
+        margin: 0;
+        font-weight: 500;
+    }
+    
+    /* Charts Section */
+    .charts-section {
+        margin-top: 40px;
+        padding-bottom: 40px;
+    }
+    
+    .charts-section h2 {
+        color: #1A1A1A;
+        margin-bottom: 25px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 1.5rem;
+    }
+    
+    .charts-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 25px;
+    }
+    
+    .chart-wrapper {
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+        border: 1px solid #E2E8F0;
+    }
+    
+    .chart-wrapper h3 {
+        margin: 0 0 15px 0;
+        color: #1A1A1A;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+    
+    .chart-canvas-wrapper {
+        position: relative;
+        height: 300px;
+        margin-bottom: 15px;
+    }
+    
+    /* Dashboard Grid */
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 24px;
+        margin-top: 20px;
+    }
+    
+    .card {
+        background: #FFFFFF;
+        border-radius: 16px;
+        border: 1px solid #E2E8F0;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+        overflow: hidden;
+    }
+    
+    .card-header {
+        padding: 20px 24px;
+        border-bottom: 1px solid #E2E8F0;
+        background: #F8F9FA;
+    }
+    
+    .card-header h3 {
+        margin: 0;
+        color: #1A1A1A;
+        font-size: 1.2rem;
+        font-weight: 600;
+    }
+    
+    .card-body {
+        padding: 20px 24px;
+    }
+    
+    /* Alerts List */
+    .alerts-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .alert-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 14px;
+        border-radius: 12px;
+        background: #F8F9FA;
+        border-left: 4px solid #CBD5E0;
+        transition: background 0.2s ease;
+    }
+    
+    .alert-item:hover {
+        background: #EDF2F7;
+    }
+    
+    .alert-item.alert-critical { border-left-color: #E53E3E; }
+    .alert-item.alert-warning { border-left-color: #D69E2E; }
+    .alert-item.alert-info { border-left-color: #4299E1; }
+    
+    .alert-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: #5A67D8;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    
+    .alert-icon i {
+        color: white;
+        font-size: 0.9rem;
+    }
+    
+    .alert-info {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .alert-info h5 {
+        margin: 0 0 4px 0;
+        color: #1A1A1A;
+        font-size: 1rem;
+        font-weight: 600;
+    }
+    
+    .alert-info p {
+        margin: 0 0 4px 0;
+        color: #4A5568;
+        font-size: 0.9rem;
+        line-height: 1.4;
+    }
+    
+    .alert-info small {
+        color: #A0AEC0;
+        font-size: 0.8rem;
+    }
+    
+    .alert-status .badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    
+    .badge-new { background: #EBF8FF; color: #3182CE; }
+    .badge-resolved { background: #F0FFF4; color: #38A169; }
+    .badge-ignored { background: #EDF2F7; color: #718096; }
+    
+    /* Device Status */
+    .device-status {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+    
+    .status-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        background: #F8F9FA;
+        border-radius: 10px;
+    }
+    
+    .status-label {
+        color: #4A5568;
+        font-weight: 500;
+    }
+    
+    .status-value {
+        color: #1A1A1A;
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .dashboard-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        
+        .dashboard-stats {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .dashboard-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .charts-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .stat-card {
+            padding: 16px;
+        }
+        
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+        }
+        
+        .stat-content h3 {
+            font-size: 1.5rem;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .dashboard-stats {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<script>
+    // Константы цветов для разных датчиков
+    const colors = [
+        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40',
+        '#FF6384', '#C9CBCF', '#4BC0C0', '#FF6384'
+    ];
+    
+    const chartsData = {{ charts_data|safe }};
+    const container = document.getElementById('chartsContainer');
+    
+    if (chartsData && chartsData.length > 0) {
+        chartsData.forEach((chart, index) => {
+            // Создаем обертку для каждого графика
+            const wrapper = document.createElement('div');
+            wrapper.className = 'chart-wrapper';
+            wrapper.innerHTML = `
+                <h3>${chart.title} (${chart.unit})</h3>
+                <div class="chart-canvas-wrapper">
+                    <canvas id="chart-${index}"></canvas>
+                </div>
+            `;
+            container.appendChild(wrapper);
+            
+            // Подготавливаем данные для Chart.js
+            const ctx = document.getElementById(`chart-${index}`).getContext('2d');
+            
+            // Используем первый набор данных для получения меток
+            const labels = chart.devices.length > 0 ? chart.devices[0].labels : [];
+            
+            // Готовим датасеты для каждого устройства
+            const datasets = chart.devices.map((device, deviceIndex) => ({
+                label: device.name,
+                data: device.values.length === labels.length ? device.values : Array(labels.length).fill(null),
+                borderColor: colors[deviceIndex % colors.length],
+                backgroundColor: colors[deviceIndex % colors.length] + '20',
+                tension: 0.4,
+                fill: false,
+                borderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                pointBackgroundColor: colors[deviceIndex % colors.length],
+                pointBorderWidth: 2,
+                pointBorderColor: '#fff'
+            }));
+            
+            // Создаем график
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                padding: 15,
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            padding: 12,
+                            titleFont: {
+                                size: 13
+                            },
+                            bodyFont: {
+                                size: 12
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        },
+                        y: {
+                            display: true,
+                            grid: {
+                                color: 'rgba(0,0,0,0.05)'
+                            },
+                            ticks: {
+                                font: {
+                                    size: 11
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: chart.unit,
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x'
+                    }
+                }
+            });
+        });
+    } else {
+        container.innerHTML = '<p style="padding: 20px; text-align: center; color: #999;">Нет данных для отображения</p>';
+    }
+</script>
+
 {% endblock %}
