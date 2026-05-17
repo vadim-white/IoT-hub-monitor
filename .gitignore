@@ -24,3 +24,4 @@ db.sqlite3
 DOCUMENTATION.md
 setup.sh
 .github/workflows
+DESIGN.md
