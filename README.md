@@ -23,8 +23,8 @@
 | **Database** | PostgreSQL |
 | **Frontend** | HTML5, CSS3, JavaScript, Chart.js |
 | **Контейнеризация** | Docker, Docker Compose |
-| **MLOps** | MLflow, Apache Airflow (опционально) |
-| **Аутентификация** | Django Auth, JWT (опционально) |
+| **Аутентификация** | Django Auth, Token Authentication |
+| **Безопасность** | Custom Security Middleware (SQL injection, XSS, path traversal) |
 
 ---
 
@@ -36,13 +36,20 @@ IoT-hub-monitor/
 ├── Dockerfile              # Образ приложения
 ├── requirements.txt        # Зависимости Python
 ├── manage.py               # Точка входа Django
-├── apps/
-│   ├── devices/            # Модели и логика устройств
-│   ├── alerts/             # Система уведомлений
-│   ├── metrics/            # Сбор и обработка метрик
-│   └── users/              # Аутентификация
-├── static/                 # CSS, JS, изображения
-├── templates/              # HTML-шаблоны (Django)
+├── run_fuzzing_tests.py    # Fuzzing тесты безопасности
+├── iot_hub/
+│   ├── apps/
+│   │   ├── accounts/       # Аутентификация и профили пользователей
+│   │   ├── devices/        # Модели и логика IoT-устройств
+│   │   ├── alerts/         # Система уведомлений и алертов
+│   │   ├── telemetry/      # Сбор и обработка телеметрии
+│   │   ├── audit/          # Логирование действий
+│   │   ├── dashboard/      # Визуализация данных
+│   │   └── common/         # Общие утилиты и middleware
+│   ├── config/             # Конфигурация Django
+│   ├── static/             # CSS, JS, изображения
+│   └── templates/          # HTML-шаблоны
+├── tests/                  # Дополнительные тесты
 └── README.md               # Этот файл
 ```
 
@@ -135,6 +142,28 @@ docker-compose exec web python manage.py createsuperuser
    ```bash
    docker-compose up -d --force-recreate web
    ```
+
+---
+
+## 🔒 Безопасность и тестирование
+
+### Fuzzing тесты
+Проект включает comprehensive fuzzing тест-сьют для проверки безопасности API:
+
+```bash
+# Запуск fuzzing тестов
+docker-compose exec -T web python run_fuzzing_tests.py
+```
+
+**Защита от**:
+- SQL Injection
+- Cross-Site Scripting (XSS)
+- Path Traversal
+- Command Injection
+- Null Byte Injection
+- Malformed requests
+
+Тесты запускаются автоматически в CI/CD pipeline.
 
 ---
 
