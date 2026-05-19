@@ -1,0 +1,128 @@
+{
+  "timestamp": "2026-05-18T16:38:37.185786",
+  "total": 24,
+  "passed": 20,
+  "failed": 4,
+  "tests": [
+    {
+      "name": "SQL Injection OR Based",
+      "status": "PASS",
+      "code": 400
+    },
+    {
+      "name": "SQL Injection Route OR Based",
+      "status": "PASS",
+      "code": 400
+    },
+    {
+      "name": "SQL Injection Drop",
+      "status": "PASS",
+      "code": 400
+    },
+    {
+      "name": "SQL Injection Route Drop",
+      "status": "PASS",
+      "code": 400
+    },
+    {
+      "name": "SQL Injection Comment",
+      "status": "PASS",
+      "code": 400
+    },
+    {
+      "name": "SQL Injection Route Comment",
+      "status": "PASS",
+      "code": 400
+    },
+    {
+      "name": "SQL Injection Union",
+      "status": "PASS",
+      "code": 400
+    },
+    {
+      "name": "SQL Injection Route Union",
+      "status": "PASS",
+      "code": 400
+    },
+    {
+      "name": "XSS Register Script",
+      "status": "PASS",
+      "code": 400
+    },
+    {
+      "name": "XSS Register JS",
+      "status": "PASS",
+      "code": 400
+    },
+    {
+      "name": "XSS Register Event",
+      "status": "PASS",
+      "code": 400
+    },
+    {
+      "name": "Protected /api/devices/",
+      "status": "FAIL",
+      "code": 400
+    },
+    {
+      "name": "Protected /api/alerts/",
+      "status": "FAIL",
+      "code": 400
+    },
+    {
+      "name": "Protected /api/telemetry/",
+      "status": "FAIL",
+      "code": 400
+    },
+    {
+      "name": "Traversal Unix Path",
+      "status": "PASS",
+      "code": 400
+    },
+    {
+      "name": "Traversal Null Byte",
+      "status": "PASS",
+      "code": 400
+    },
+    {
+      "name": "Traversal Command",
+      "status": "PASS",
+      "code": 400
+    },
+    {
+      "name": "Large Payload Register",
+      "status": "PASS",
+      "code": 400
+    },
+    {
+      "name": "Auth Login",
+      "status": "PASS",
+      "code": 400
+    },
+    {
+      "name": "Admin Panel",
+      "status": "FAIL",
+      "code": 400
+    },
+    {
+      "name": "Missing Fields",
+      "status": "PASS",
+      "code": 400
+    },
+    {
+      "name": "Malformed JSON",
+      "status": "PASS",
+      "code": 400
+    },
+    {
+      "name": "PUT Method",
+      "status": "PASS",
+      "code": 400
+    },
+    {
+      "name": "DELETE Method",
+      "status": "PASS",
+      "code": 400
+    }
+  ]
+}

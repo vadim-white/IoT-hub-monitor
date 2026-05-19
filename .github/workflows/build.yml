@@ -1,0 +1,108 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: iot_hub_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run migrations
+      env:
+        DATABASE_NAME: iot_hub_db
+        DATABASE_USER: postgres
+        DATABASE_PASSWORD: postgres
+        DATABASE_HOST: localhost
+        DATABASE_PORT: 5432
+      run: |
+        python manage.py makemigrations --noinput
+        python manage.py migrate --noinput
+
+    - name: Create admin user
+      env:
+        DATABASE_NAME: iot_hub_db
+        DATABASE_USER: postgres
+        DATABASE_PASSWORD: postgres
+        DATABASE_HOST: localhost
+        DATABASE_PORT: 5432
+      run: |
+        python init_db.py
+
+    - name: Load telemetry data
+      env:
+        DATABASE_NAME: iot_hub_db
+        DATABASE_USER: postgres
+        DATABASE_PASSWORD: postgres
+        DATABASE_HOST: localhost
+        DATABASE_PORT: 5432
+      run: |
+        python load_telemetry_data.py
+
+    - name: Run fuzzing tests
+      env:
+        DATABASE_NAME: iot_hub_db
+        DATABASE_USER: postgres
+        DATABASE_PASSWORD: postgres
+        DATABASE_HOST: localhost
+        DATABASE_PORT: 5432
+      run: |
+        python run_fuzzing_tests.py
+
+    - name: Build Docker images
+      run: |
+        docker build -t iot-hub-web:latest .
+
+    - name: Run application with Docker Compose
+      run: |
+        docker-compose up -d
+        sleep 10
+        docker-compose logs
+
+    - name: Health check
+      run: |
+        for i in {1..30}; do
+          if curl -s http://localhost:8080/admin/ > /dev/null; then
+            echo "✓ Application is healthy"
+            exit 0
+          fi
+          echo "Waiting for app to start... ($i/30)"
+          sleep 2
+        done
+        echo "✗ Application failed to start"
+        exit 1
+
+    - name: Cleanup
+      if: always()
+      run: |
+        docker-compose down -v
