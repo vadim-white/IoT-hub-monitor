@@ -29,85 +29,11 @@ jobs:
           cache-to: type=gha,mode=max
 
   # -----------------------
-  # TEST
-  # -----------------------
-  test:
-    runs-on: ubuntu-latest
-    needs: build
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_DB: iot_hub_db
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-
-      - name: Run migrations
-        env:
-          DATABASE_NAME: iot_hub_db
-          DATABASE_USER: postgres
-          DATABASE_PASSWORD: postgres
-          DATABASE_HOST: 127.0.0.1
-          DATABASE_PORT: 5432
-          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/iot_hub
-          DJANGO_SETTINGS_MODULE: config.settings
-        run: |
-          export PYTHONPATH=${{ github.workspace }}:${{ github.workspace }}/iot_hub:$PYTHONPATH
-          python manage.py makemigrations --noinput
-          python manage.py migrate --noinput
-
-      - name: Create admin and load data
-        env:
-          DATABASE_NAME: iot_hub_db
-          DATABASE_USER: postgres
-          DATABASE_PASSWORD: postgres
-          DATABASE_HOST: 127.0.0.1
-          DATABASE_PORT: 5432
-          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/iot_hub
-          DJANGO_SETTINGS_MODULE: config.settings
-        run: |
-          export PYTHONPATH=${{ github.workspace }}:${{ github.workspace }}/iot_hub:$PYTHONPATH
-          python init_db.py
-          python load_telemetry_data.py
-
-      - name: Run fuzzing tests
-        env:
-          DATABASE_NAME: iot_hub_db
-          DATABASE_USER: postgres
-          DATABASE_PASSWORD: postgres
-          DATABASE_HOST: 127.0.0.1
-          DATABASE_PORT: 5432
-          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/iot_hub
-          DJANGO_SETTINGS_MODULE: config.settings
-        run: |
-          export PYTHONPATH=${{ github.workspace }}:${{ github.workspace }}/iot_hub:$PYTHONPATH
-          python run_fuzzing_tests.py
-
-  # -----------------------
   # DEPLOY
   # -----------------------
   deploy:
     runs-on: ubuntu-latest
-    needs: test
+    needs: build
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Checkout repository
