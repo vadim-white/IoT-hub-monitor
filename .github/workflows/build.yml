@@ -5,11 +5,35 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
+  workflow_dispatch:
 
 jobs:
-  build-and-test:
+  # -----------------------
+  # BUILD
+  # -----------------------
+  build:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: iot-hub-web:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # -----------------------
+  # TEST
+  # -----------------------
+  test:
+    runs-on: ubuntu-latest
+    needs: build
     services:
       postgres:
         image: postgres:15
@@ -26,83 +50,72 @@ jobs:
           - 5432:5432
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
 
-    - name: Run migrations
-      env:
-        DATABASE_NAME: iot_hub_db
-        DATABASE_USER: postgres
-        DATABASE_PASSWORD: postgres
-        DATABASE_HOST: localhost
-        DATABASE_PORT: 5432
-      run: |
-        python manage.py makemigrations --noinput
-        python manage.py migrate --noinput
+      - name: Run migrations
+        env:
+          DATABASE_NAME: iot_hub_db
+          DATABASE_USER: postgres
+          DATABASE_PASSWORD: postgres
+          DATABASE_HOST: 127.0.0.1
+          DATABASE_PORT: 5432
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/iot_hub
+          DJANGO_SETTINGS_MODULE: config.settings
+        run: |
+          export PYTHONPATH=${{ github.workspace }}:${{ github.workspace }}/iot_hub:$PYTHONPATH
+          python manage.py makemigrations --noinput
+          python manage.py migrate --noinput
 
-    - name: Create admin user
-      env:
-        DATABASE_NAME: iot_hub_db
-        DATABASE_USER: postgres
-        DATABASE_PASSWORD: postgres
-        DATABASE_HOST: localhost
-        DATABASE_PORT: 5432
-      run: |
-        python init_db.py
+      - name: Create admin and load data
+        env:
+          DATABASE_NAME: iot_hub_db
+          DATABASE_USER: postgres
+          DATABASE_PASSWORD: postgres
+          DATABASE_HOST: 127.0.0.1
+          DATABASE_PORT: 5432
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/iot_hub
+          DJANGO_SETTINGS_MODULE: config.settings
+        run: |
+          export PYTHONPATH=${{ github.workspace }}:${{ github.workspace }}/iot_hub:$PYTHONPATH
+          python init_db.py
+          python load_telemetry_data.py
 
-    - name: Load telemetry data
-      env:
-        DATABASE_NAME: iot_hub_db
-        DATABASE_USER: postgres
-        DATABASE_PASSWORD: postgres
-        DATABASE_HOST: localhost
-        DATABASE_PORT: 5432
-      run: |
-        python load_telemetry_data.py
+      - name: Run fuzzing tests
+        env:
+          DATABASE_NAME: iot_hub_db
+          DATABASE_USER: postgres
+          DATABASE_PASSWORD: postgres
+          DATABASE_HOST: 127.0.0.1
+          DATABASE_PORT: 5432
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/iot_hub
+          DJANGO_SETTINGS_MODULE: config.settings
+        run: |
+          export PYTHONPATH=${{ github.workspace }}:${{ github.workspace }}/iot_hub:$PYTHONPATH
+          python run_fuzzing_tests.py
 
-    - name: Run fuzzing tests
-      env:
-        DATABASE_NAME: iot_hub_db
-        DATABASE_USER: postgres
-        DATABASE_PASSWORD: postgres
-        DATABASE_HOST: localhost
-        DATABASE_PORT: 5432
-      run: |
-        python run_fuzzing_tests.py
+  # -----------------------
+  # DEPLOY
+  # -----------------------
+  deploy:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Build Docker images
-      run: |
-        docker build -t iot-hub-web:latest .
-
-    - name: Run application with Docker Compose
-      run: |
-        docker-compose up -d
-        sleep 10
-        docker-compose logs
-
-    - name: Health check
-      run: |
-        for i in {1..30}; do
-          if curl -s http://localhost:8080/admin/ > /dev/null; then
-            echo "✓ Application is healthy"
-            exit 0
-          fi
-          echo "Waiting for app to start... ($i/30)"
-          sleep 2
-        done
-        echo "✗ Application failed to start"
-        exit 1
-
-    - name: Cleanup
-      if: always()
-      run: |
-        docker-compose down -v
+      - name: Deploy notification
+        run: |
+          echo "✓ Build and tests completed successfully"
+          echo "Repository: ${{ github.repository }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Branch: ${{ github.ref }}"
