@@ -40,7 +40,7 @@
                         </td>
                         <td>
                             {% if device.last_seen_at %}
-                                {{ device.last_seen_at|date:"d.m.Y H:i" }}
+                                {{ device.last_seen_at|timesince }} назад
                             {% else %}
                                 <em>Никогда</em>
                             {% endif %}

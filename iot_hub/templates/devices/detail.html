@@ -19,7 +19,7 @@
                     <p><strong>Серийный номер:</strong> {{ device.serial_number }}</p>
                     <p><strong>Тип:</strong> {{ device.device_type.name }}</p>
                     <p><strong>Статус:</strong> <span class="badge badge-{{ device.status }}">{{ device.get_status_display }}</span></p>
-                    <p><strong>Последний контакт:</strong> {{ device.last_seen_at|date:"d.m.Y H:i:s"|default:"Никогда" }}</p>
+                    <p><strong>Последний контакт:</strong> {% if device.last_seen_at %}{{ device.last_seen_at|timesince }} назад{% else %}Никогда{% endif %}</p>
                     <p><strong>Локация:</strong> {{ device.location_name|default:"Не указана" }}</p>
                     <p><strong>Описание:</strong> {{ device.description|default:"Нет описания" }}</p>
                 </div>
