@@ -14,14 +14,24 @@ SECRET_KEY = config(
 
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,testserver,*.onrender.com', cast=Csv())
+# ALLOWED_HOSTS with dynamic configuration
+_allowed_hosts = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,testserver', cast=Csv())
+# Add Render domain if APP_HOSTNAME is set
+_app_hostname = config('RENDER_EXTERNAL_HOSTNAME', default='')
+if _app_hostname:
+    _allowed_hosts = list(_allowed_hosts) + [_app_hostname]
+ALLOWED_HOSTS = _allowed_hosts
 
 # CSRF protection
-CSRF_TRUSTED_ORIGINS = [
+_csrf_origins = [
     'http://localhost:8080',
     'http://127.0.0.1:8080',
-    'https://iot-hub-monitor.onrender.com',
 ]
+# Add Render domain if APP_HOSTNAME is set
+_app_hostname = config('RENDER_EXTERNAL_HOSTNAME', default='')
+if _app_hostname:
+    _csrf_origins.append(f'https://{_app_hostname}')
+CSRF_TRUSTED_ORIGINS = _csrf_origins
 
 INSTALLED_APPS = [
     'daphne',
