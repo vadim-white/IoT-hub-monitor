@@ -19,9 +19,13 @@ RUN pip install --no-cache-dir -r requirements.txt gunicorn
 # Copy project
 COPY . .
 
+# Copy and make entrypoint executable
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 # Create necessary directories
 RUN mkdir -p logs staticfiles media
 
 EXPOSE 8080
 
-CMD ["gunicorn", "iot_hub.config.wsgi:application", "--bind", "0.0.0.0:8080", "--workers", "4"]
+CMD ["/app/entrypoint.sh"]
