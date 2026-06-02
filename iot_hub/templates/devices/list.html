@@ -8,10 +8,107 @@
         <h1><i class="fas fa-network-wired"></i> Устройства</h1>
         <button id="add-device-btn" class="btn btn-primary"><i class="fas fa-plus"></i> Добавить устройство</button>
     </div>
-    
+
+    {% if is_admin %}
+    <!-- ══════════ ADMIN VIEW: аккордеон по пользователям ══════════ -->
     <div class="card">
         <div class="card-header">
-            <h3>Список устройств ({{ total_devices }})</h3>
+            <h3>Все устройства ({{ total_devices }}) — по пользователям</h3>
+        </div>
+        <div class="card-body" style="padding: 0;">
+            {% for group in users_with_devices %}
+            <div class="accordion-item" style="border-bottom: 1px solid #e0e0e0;">
+
+                <!-- Заголовок пользователя (кликабельный) -->
+                <div class="accordion-header"
+                     onclick="toggleAccordion('user-{{ group.user.id }}')"
+                     style="display:flex; align-items:center; justify-content:space-between;
+                            padding: 14px 20px; cursor:pointer;
+                            background:#f8f9fa; user-select:none;">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <i class="fas fa-user-circle" style="font-size:1.4rem; color:#6c757d;"></i>
+                        <div>
+                            <strong>{{ group.user.get_full_name|default:group.user.username }}</strong>
+                            <span style="color:#6c757d; font-size:0.85rem; margin-left:8px;">@{{ group.user.username }}</span>
+                            {% if group.user.role.role %}
+                            <span class="badge" style="margin-left:8px;
+                                background:{% if group.user.role.role == 'admin' %}#dc3545{% elif group.user.role.role == 'operator' %}#fd7e14{% else %}#0d6efd{% endif %};
+                                color:#fff; padding:2px 8px; border-radius:10px; font-size:0.75rem;">
+                                {{ group.user.role.get_role_display }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:14px;">
+                        <span style="color:#6c757d; font-size:0.9rem;">
+                            <i class="fas fa-hdd"></i> {{ group.count }} устройств
+                        </span>
+                        <i class="fas fa-chevron-down accordion-icon" id="icon-user-{{ group.user.id }}"
+                           style="transition: transform 0.25s; color:#6c757d;"></i>
+                    </div>
+                </div>
+
+                <!-- Таблица устройств (скрыта по умолчанию) -->
+                <div id="user-{{ group.user.id }}" style="display:none;">
+                    <table class="table" style="margin:0;">
+                        <thead style="background:#f1f3f5;">
+                            <tr>
+                                <th>Название</th>
+                                <th>Серийный номер</th>
+                                <th>Тип</th>
+                                <th>Статус</th>
+                                <th>Последний контакт</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for device in group.devices %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'device_detail' device.id %}" style="text-decoration:none; color:inherit;">
+                                        <strong>{{ device.name }}</strong>
+                                    </a>
+                                </td>
+                                <td>{{ device.serial_number }}</td>
+                                <td>{{ device.device_type.name }}</td>
+                                <td>
+                                    <span class="badge badge-{{ device.status }}">{{ device.get_status_display }}</span>
+                                </td>
+                                <td>
+                                    {% if device.last_seen_at %}
+                                        {{ device.last_seen_at|timesince }} назад
+                                    {% else %}
+                                        <em>Никогда</em>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <button onclick="viewDeviceMetrics('{{ device.id }}', '{{ device.name }}')" class="btn btn-sm btn-info" title="Просмотр метрик">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button onclick="openEditDeviceModal('{{ device.id }}', '{{ device.name }}')" class="btn btn-sm btn-warning" title="Редактировать">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button onclick="deleteDevice('{{ device.id }}', '{{ device.name }}')" class="btn btn-sm btn-danger" title="Удалить">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% empty %}
+            <div style="padding:20px; text-align:center; color:#6c757d;">Устройств нет</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    {% else %}
+    <!-- ══════════ ОБЫЧНЫЙ ПОЛЬЗОВАТЕЛЬ: обычная таблица ══════════ -->
+    <div class="card">
+        <div class="card-header">
+            <h3>Мои устройства ({{ total_devices }})</h3>
         </div>
         <div class="card-body">
             <table class="table">
@@ -29,7 +126,7 @@
                     {% for device in devices %}
                     <tr>
                         <td>
-                            <a href="{% url 'device_detail' device.id %}" style="text-decoration: none; color: inherit;">
+                            <a href="{% url 'device_detail' device.id %}" style="text-decoration:none; color:inherit;">
                                 <strong>{{ device.name }}</strong>
                             </a>
                         </td>
@@ -66,9 +163,10 @@
             </table>
         </div>
     </div>
+    {% endif %}
 </div>
 
-<!-- Modal for adding device -->
+<!-- Modal: добавить устройство -->
 <div id="addDeviceModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -117,23 +215,21 @@
     </div>
 </div>
 
-<!-- Modal for viewing device metrics -->
+<!-- Modal: просмотр метрик -->
 <div id="metricsModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
             <h3>Метрики устройства: <span id="device-name-title"></span></h3>
             <span class="close" data-dismiss="modal">&times;</span>
         </div>
-        <div id="metrics-content" style="padding: 20px;">
-            <!-- Динамически заполняется -->
-        </div>
+        <div id="metrics-content" style="padding: 20px;"></div>
         <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-dismiss="modal">Закрыть</button>
         </div>
     </div>
 </div>
 
-<!-- Modal for editing device -->
+<!-- Modal: редактировать устройство -->
 <div id="editDeviceModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -174,7 +270,7 @@
                 </div>
                 <div class="form-group">
                     <label for="edit-device-location">Место установки</label>
-                    <input type="text" id="edit-device-location" name="location_name" class="form-control" placeholder="Например: Офис №1, Комната 101">
+                    <input type="text" id="edit-device-location" name="location_name" class="form-control">
                 </div>
                 <div class="form-group">
                     <label for="edit-device-description">Описание</label>
@@ -190,4 +286,13 @@
     </div>
 </div>
 
+<script>
+function toggleAccordion(id) {
+    const body = document.getElementById(id);
+    const icon = document.getElementById('icon-' + id);
+    const isOpen = body.style.display !== 'none';
+    body.style.display = isOpen ? 'none' : 'block';
+    if (icon) icon.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+}
+</script>
 {% endblock %}

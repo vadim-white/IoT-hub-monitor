@@ -78,16 +78,43 @@ def create_default_metrics(device):
 @login_required(login_url='login')
 def devices_list(request):
     """Список всех устройств для пользователей."""
-    if hasattr(request.user, 'role') and request.user.role.is_admin:
+    from django.contrib.auth.models import User
+    from collections import defaultdict
+
+    is_admin = hasattr(request.user, 'role') and request.user.role.is_admin
+
+    if is_admin:
         devices = Device.objects.select_related('device_type', 'owner').all()
+
+        # Группируем по владельцу
+        grouped = defaultdict(list)
+        for device in devices:
+            grouped[device.owner].append(device)
+
+        users_with_devices = [
+            {
+                'user': owner,
+                'devices': dev_list,
+                'count': len(dev_list),
+            }
+            for owner, dev_list in grouped.items()
+        ]
+
+        context = {
+            'is_admin': True,
+            'users_with_devices': users_with_devices,
+            'total_devices': devices.count(),
+            'active_devices': devices.filter(is_active=True).count(),
+        }
     else:
         devices = Device.objects.filter(owner=request.user).select_related('device_type')
-    
-    context = {
-        'devices': devices,
-        'total_devices': devices.count(),
-        'active_devices': devices.filter(is_active=True).count(),
-    }
+        context = {
+            'is_admin': False,
+            'devices': devices,
+            'total_devices': devices.count(),
+            'active_devices': devices.filter(is_active=True).count(),
+        }
+
     return render(request, 'devices/list.html', context)
 
 
