@@ -1,0 +1,27 @@
+databases:
+  - name: iot-hub-postgres
+    databaseName: iot_hub_db
+    user: postgres
+    plan: free
+    region: frankfurt
+
+services:
+  - type: web
+    name: iot-hub-monitor
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: iot-hub-postgres
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: PYTHONPATH
+        value: /app:/app/iot_hub
+      - key: DJANGO_SETTINGS_MODULE
+        value: iot_hub.config.settings

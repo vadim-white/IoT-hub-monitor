@@ -4,6 +4,7 @@ Django settings for IoT Hub Monitor.
 import os
 from pathlib import Path
 from decouple import config, Csv
+import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -87,17 +88,23 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DATABASE_NAME', default='iot_hub_db'),
-        'USER': config('DATABASE_USER', default='postgres'),
-        'PASSWORD': config('DATABASE_PASSWORD', default='postgres'),
-        'HOST': config('DATABASE_HOST', default='localhost'),
-        'PORT': config('DATABASE_PORT', default='5432'),
-        'CONN_MAX_AGE': 600,
+_database_url = config('DATABASE_URL', default='')
+if _database_url:
+    DATABASES = {
+        'default': dj_database_url.parse(_database_url, conn_max_age=600)
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': config('DATABASE_NAME', default='iot_hub_db'),
+            'USER': config('DATABASE_USER', default='postgres'),
+            'PASSWORD': config('DATABASE_PASSWORD', default='postgres'),
+            'HOST': config('DATABASE_HOST', default='localhost'),
+            'PORT': config('DATABASE_PORT', default='5432'),
+            'CONN_MAX_AGE': 600,
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -151,11 +158,6 @@ REST_FRAMEWORK = {
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    "http://localhost:8080",
-    "http://127.0.0.1:8080",
-]
-
-CSRF_TRUSTED_ORIGINS = [
     "http://localhost:8080",
     "http://127.0.0.1:8080",
 ]

@@ -20,8 +20,8 @@ RUN pip install --no-cache-dir -r requirements.txt gunicorn
 COPY . .
 
 # Create necessary directories
-RUN mkdir -p logs staticfiles media
+RUN mkdir -p logs staticfiles media && chmod +x entrypoint.py
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "mkdir -p /app/logs && python manage.py makemigrations --noinput 2>&1 || true && python manage.py migrate --noinput && python init_db.py && python load_telemetry_data.py && gunicorn iot_hub.config.wsgi:application --bind 0.0.0.0:8080 --workers 4 --worker-class sync --timeout 300 --keep-alive 5 --max-requests 1000 --max-requests-jitter 50 --access-logfile - --error-logfile - --log-level info"]
+CMD ["python", "entrypoint.py"]
