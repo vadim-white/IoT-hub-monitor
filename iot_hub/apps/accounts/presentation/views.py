@@ -93,10 +93,14 @@ def profile_view(request):
         
         return redirect('profile')
     
+    role, _ = UserRole.objects.get_or_create(
+        user=request.user, defaults={'role': 'client'}
+    )
+    profile, _ = UserProfile.objects.get_or_create(user=request.user)
     context = {
         'user': request.user,
-        'role': request.user.role,
-        'profile': request.user.profile
+        'role': role,
+        'profile': profile
     }
     return render(request, 'accounts/profile.html', context)
 
