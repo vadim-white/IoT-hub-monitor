@@ -1,62 +1,80 @@
 {% extends "base.html" %}
-
-{% block title %}Профиль - IoT Hub Monitor{% endblock %}
+{% block title %}Профиль — IoT Hub Monitor{% endblock %}
 
 {% block content %}
 <div class="container">
-    <div class="row">
-        <div class="col-md-8">
-            <h1><i class="fas fa-user-circle"></i> Мой профиль</h1>
-            
+    <div class="page-header">
+        <h1><i class="fas fa-user-circle"></i> Мой профиль</h1>
+    </div>
+
+    <div class="profile-grid">
+        <!-- Левая колонка: форма -->
+        <div class="card">
+            <div class="card-header"><h3>Информация об аккаунте</h3></div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label>Имя пользователя</label>
+                        <input type="text" class="form-control" value="{{ user.username }}" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" class="form-control" value="{{ user.email }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="first_name">Имя</label>
+                        <input type="text" id="first_name" name="first_name" class="form-control" value="{{ user.first_name }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="last_name">Фамилия</label>
+                        <input type="text" id="last_name" name="last_name" class="form-control" value="{{ user.last_name }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="phone">Телефон</label>
+                        <input type="tel" id="phone" name="phone" class="form-control" value="{{ profile.phone|default:'' }}" placeholder="+7 (000) 000-00-00">
+                    </div>
+                    <div class="form-group">
+                        <label for="organization">Организация</label>
+                        <input type="text" id="organization" name="organization" class="form-control" value="{{ profile.organization|default:'' }}" placeholder="Название организации">
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Сохранить изменения</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Правая колонка: аватар + роль -->
+        <div>
             <div class="card">
-                <div class="card-header">
-                    <h3>Информация об аккаунте</h3>
-                </div>
-                <div class="card-body">
-                    <form method="post" class="profile-form">
-                        {% csrf_token %}
-                        
-                        <div class="form-group">
-                            <label>Имя пользователя</label>
-                            <input type="text" class="form-control" value="{{ user.username }}" readonly>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="email">Email</label>
-                            <input type="email" id="email" name="email" class="form-control" value="{{ user.email }}" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="first_name">Имя</label>
-                            <input type="text" id="first_name" name="first_name" class="form-control" value="{{ user.first_name }}">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="last_name">Фамилия</label>
-                            <input type="text" id="last_name" name="last_name" class="form-control" value="{{ user.last_name }}">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="phone">Телефон</label>
-                            <input type="tel" id="phone" name="phone" class="form-control" value="{{ profile.phone|default:'' }}">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="organization">Организация</label>
-                            <input type="text" id="organization" name="organization" class="form-control" value="{{ profile.organization|default:'' }}">
-                        </div>
-                        
-                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Сохранить</button>
-                    </form>
+                <div class="card-body profile-avatar-card">
+                    <div class="profile-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="profile-name">{{ user.get_full_name|default:user.username }}</div>
+                    <div class="profile-username">@{{ user.username }}</div>
+                    <div class="profile-role-badge">{{ role.get_role_display }}</div>
                 </div>
             </div>
-            
+
             <div class="card">
-                <div class="card-header">
-                    <h3>Роль пользователя</h3>
-                </div>
+                <div class="card-header"><h3>Статистика</h3></div>
                 <div class="card-body">
-                    <p><strong>{{ role.get_role_display }}</strong></p>
+                    <ul class="info-list">
+                        <li>
+                            <span class="info-label">Дата регистрации</span>
+                            <span class="info-value">{{ user.date_joined|date:"d.m.Y" }}</span>
+                        </li>
+                        <li>
+                            <span class="info-label">Последний вход</span>
+                            <span class="info-value">{{ user.last_login|date:"d.m.Y H:i"|default:"—" }}</span>
+                        </li>
+                        <li>
+                            <span class="info-label">Статус</span>
+                            <span class="info-value">
+                                <span class="badge badge-success">Активен</span>
+                            </span>
+                        </li>
+                    </ul>
                 </div>
             </div>
         </div>

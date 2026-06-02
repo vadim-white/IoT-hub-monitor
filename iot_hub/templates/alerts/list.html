@@ -1,48 +1,41 @@
 {% extends "base.html" %}
-
-{% block title %}Алерты - IoT Hub Monitor{% endblock %}
+{% block title %}Алерты — IoT Hub Monitor{% endblock %}
 
 {% block content %}
 <div class="container">
     <div class="page-header">
         <h1><i class="fas fa-bell"></i> Алерты</h1>
-        <div class="filter-badge alert-stats">
-            <span class="stat"><i class="fas fa-star"></i> Новых: {{ new_count }}</span>
-            <span class="stat"><i class="fas fa-check"></i> Подтверждено: {{ acknowledged_count }}</span>
-            <span class="stat"><i class="fas fa-check-double"></i> Разрешено: {{ resolved_count }}</span>
+        <div class="alert-stats">
+            <span class="stat"><i class="fas fa-circle" style="color:var(--apple-blue);font-size:9px;"></i> Новых: <strong>{{ new_count }}</strong></span>
+            <span class="stat"><i class="fas fa-circle" style="color:var(--apple-warning);font-size:9px;"></i> Подтверждено: <strong>{{ acknowledged_count }}</strong></span>
+            <span class="stat"><i class="fas fa-circle" style="color:var(--apple-success);font-size:9px;"></i> Разрешено: <strong>{{ resolved_count }}</strong></span>
         </div>
     </div>
-    
+
     <div class="card">
-        <div class="card-header">
-            <h3>Все алерты</h3>
-        </div>
-        <div class="card-body">
-            <div class="alerts-table">
-                {% for alert in alerts %}
-                <div class="alert-row alert-{{ alert.severity }}">
-                    <div class="alert-col alert-info-col">
-                        <div class="alert-severity">{{ alert.get_severity_display }}</div>
-                        <div class="alert-message">{{ alert.message }}</div>
-                        <div class="alert-device">{{ alert.device.name }}</div>
-                    </div>
-                    <div class="alert-col">
-                        <span class="badge badge-{{ alert.status }}">{{ alert.get_status_display }}</span>
-                    </div>
-                    <div class="alert-col">
-                        <small>{{ alert.created_at|date:"d.m.Y H:i" }}</small>
-                    </div>
-                    <div class="alert-col">
-                        <a href="#" class="btn btn-sm btn-info"><i class="fas fa-check"></i></a>
-                        <a href="#" class="btn btn-sm btn-success"><i class="fas fa-check-double"></i></a>
-                        <a href="#" class="btn btn-sm btn-danger"><i class="fas fa-times"></i></a>
-                    </div>
-                </div>
-                {% empty %}
-                <p class="text-center">Нет алертов</p>
-                {% endfor %}
+        <div class="card-header"><h3>Все алерты</h3></div>
+
+        {% for alert in alerts %}
+        <div class="alert-row alert-{{ alert.severity }}">
+            <div>
+                <div class="alert-severity">{{ alert.get_severity_display }}</div>
+                <div class="alert-message">{{ alert.message }}</div>
+                <div class="alert-device"><i class="fas fa-microchip" style="font-size:11px;"></i> {{ alert.device.name }}</div>
+            </div>
+            <div><span class="badge badge-{{ alert.status }}">{{ alert.get_status_display }}</span></div>
+            <div style="font-size:13px;color:var(--apple-muted);white-space:nowrap;">{{ alert.created_at|date:"d.m.Y H:i" }}</div>
+            <div style="display:flex;gap:6px;">
+                <button class="btn btn-sm btn-secondary" title="Подтвердить"><i class="fas fa-check"></i></button>
+                <button class="btn btn-sm btn-primary" title="Разрешить"><i class="fas fa-check-double"></i></button>
+                <button class="btn btn-sm btn-danger" title="Закрыть"><i class="fas fa-times"></i></button>
             </div>
         </div>
+        {% empty %}
+        <div style="padding:var(--space-9);text-align:center;color:var(--apple-muted);">
+            <i class="fas fa-check-circle" style="font-size:32px;margin-bottom:var(--space-4);display:block;color:var(--apple-success);"></i>
+            Нет алертов — всё работает штатно
+        </div>
+        {% endfor %}
     </div>
 </div>
 {% endblock %}

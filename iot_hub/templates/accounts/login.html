@@ -1,35 +1,33 @@
 {% extends "base.html" %}
-
-{% block title %}Вход - IoT Hub Monitor{% endblock %}
+{% block title %}Вход — IoT Hub Monitor{% endblock %}
 
 {% block content %}
 <div class="auth-container">
     <div class="auth-card">
-        <h1><i class="fas fa-sign-in-alt"></i> Вход в систему</h1>
-        
+        <div class="auth-logo">
+            <div class="logo-icon"><i class="fas fa-network-wired"></i></div>
+            <h1>IoT Hub Monitor</h1>
+            <p>Войдите в свою учётную запись</p>
+        </div>
+
         {% if error %}
-        <div class="alert alert-danger">{{ error }}</div>
+        <div class="alert-error"><i class="fas fa-exclamation-circle"></i> {{ error }}</div>
         {% endif %}
-        
+
         <form method="post" class="auth-form">
             {% csrf_token %}
-            
             <div class="form-group">
                 <label for="username">Имя пользователя</label>
-                <input type="text" id="username" name="username" class="form-control" required>
+                <input type="text" id="username" name="username" class="form-control" placeholder="username" required autofocus>
             </div>
-            
             <div class="form-group">
                 <label for="password">Пароль</label>
-                <input type="password" id="password" name="password" class="form-control" required>
+                <input type="password" id="password" name="password" class="form-control" placeholder="••••••••" required>
             </div>
-            
-            <button type="submit" class="btn btn-primary btn-block">Войти</button>
+            <button type="submit" class="btn btn-primary btn-lg btn-block">Войти</button>
         </form>
-        
-        <p class="auth-footer">
-            Нет аккаунта? <a href="{% url 'register' %}">Зарегистрируйтесь</a>
-        </p>
+
+        <p class="auth-footer">Нет аккаунта? <a href="{% url 'register' %}">Зарегистрируйтесь</a></p>
     </div>
 </div>
 {% endblock %}

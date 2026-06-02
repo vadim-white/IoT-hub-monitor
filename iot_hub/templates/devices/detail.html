@@ -1,6 +1,5 @@
 {% extends "base.html" %}
-
-{% block title %}{{ device.name }} - IoT Hub Monitor{% endblock %}
+{% block title %}{{ device.name }} — IoT Hub Monitor{% endblock %}
 
 {% block content %}
 <div class="container">
@@ -8,30 +7,45 @@
         <h1><i class="fas fa-microchip"></i> {{ device.name }}</h1>
         <a href="{% url 'devices_list' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Назад</a>
     </div>
-    
-    <div class="row">
-        <div class="col-md-8">
+
+    <div class="layout-2col">
+        <!-- Левая колонка -->
+        <div>
             <div class="card">
-                <div class="card-header">
-                    <h3>Основная информация</h3>
-                </div>
+                <div class="card-header"><h3>Основная информация</h3></div>
                 <div class="card-body">
-                    <p><strong>Серийный номер:</strong> {{ device.serial_number }}</p>
-                    <p><strong>Тип:</strong> {{ device.device_type.name }}</p>
-                    <p><strong>Статус:</strong> <span class="badge badge-{{ device.status }}">{{ device.get_status_display }}</span></p>
-                    <p><strong>Последний контакт:</strong> {% if device.last_seen_at %}{{ device.last_seen_at|timesince }} назад{% else %}Никогда{% endif %}</p>
-                    <p><strong>Локация:</strong> {{ device.location_name|default:"Не указана" }}</p>
-                    <p><strong>Описание:</strong> {{ device.description|default:"Нет описания" }}</p>
+                    <ul class="info-list">
+                        <li>
+                            <span class="info-label">Серийный номер</span>
+                            <span class="info-value" style="font-family:var(--font-mono);font-size:13px;">{{ device.serial_number }}</span>
+                        </li>
+                        <li>
+                            <span class="info-label">Тип</span>
+                            <span class="info-value">{{ device.device_type.name }}</span>
+                        </li>
+                        <li>
+                            <span class="info-label">Статус</span>
+                            <span class="info-value"><span class="badge badge-{{ device.status }}">{{ device.get_status_display }}</span></span>
+                        </li>
+                        <li>
+                            <span class="info-label">Последний контакт</span>
+                            <span class="info-value">
+                                {% if device.last_seen_at %}{{ device.last_seen_at|timesince }} назад{% else %}—{% endif %}
+                            </span>
+                        </li>
+                        <li>
+                            <span class="info-label">Локация</span>
+                            <span class="info-value">{{ device.location_name|default:"Не указана" }}</span>
+                        </li>
+                    </ul>
                 </div>
             </div>
-            
+
             <div class="card">
-                <div class="card-header">
-                    <h3>Метрики</h3>
-                </div>
-                <div class="card-body">
+                <div class="card-header"><h3>Метрики</h3></div>
+                <div class="card-body" style="padding:0;">
                     {% if device.metrics.all %}
-                    <table class="table table-sm">
+                    <table class="table">
                         <thead>
                             <tr>
                                 <th>Название</th>
@@ -44,43 +58,43 @@
                             {% for metric in device.metrics.all %}
                             <tr>
                                 <td>{{ metric.name }}</td>
-                                <td>{{ metric.metric_type }}</td>
+                                <td style="color:var(--apple-muted);font-size:13px;">{{ metric.metric_type }}</td>
                                 <td>{{ metric.unit }}</td>
-                                <td>
+                                <td style="font-size:13px;color:var(--apple-muted);">
                                     {% if metric.min_value or metric.max_value %}
-                                        {{ metric.min_value|default:"∞" }} - {{ metric.max_value|default:"∞" }}
-                                    {% else %}
-                                        <em>Не установлены</em>
-                                    {% endif %}
+                                        {{ metric.min_value|default:"∞" }} — {{ metric.max_value|default:"∞" }}
+                                    {% else %}<em>Не установлены</em>{% endif %}
                                 </td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                     {% else %}
-                    <p style="text-align: center; color: #999;">Нет метрик для этого устройства</p>
+                    <p style="text-align:center;color:var(--apple-muted);padding:var(--space-7) 0;">Нет метрик</p>
                     {% endif %}
                 </div>
             </div>
         </div>
-        
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-header">
-                    <h3>Действия</h3>
-                </div>
-                <div class="card-body">
-                    <button onclick="editDevice('{{ device.id }}')" class="btn btn-block btn-primary"><i class="fas fa-edit"></i> Редактировать</button>
-                    <button onclick="showSettings('{{ device.id }}')" class="btn btn-block btn-warning"><i class="fas fa-cog"></i> Настройки</button>
-                    <button onclick="showChart('{{ device.id }}', '{{ device.name }}')" class="btn btn-block btn-info"><i class="fas fa-chart-line"></i> График</button>
-                    <button onclick="deleteDevice('{{ device.id }}', '{{ device.name }}')" class="btn btn-block btn-danger"><i class="fas fa-trash"></i> Удалить</button>
-                </div>
+
+        <!-- Правая колонка: действия -->
+        <div class="card">
+            <div class="card-header"><h3>Действия</h3></div>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:var(--space-3);">
+                <button onclick="showChart('{{ device.id }}', '{{ device.name }}')" class="btn btn-primary btn-block">
+                    <i class="fas fa-chart-line"></i> График
+                </button>
+                <button onclick="openEditDeviceModal('{{ device.id }}', '{{ device.name }}')" class="btn btn-secondary btn-block">
+                    <i class="fas fa-edit"></i> Редактировать
+                </button>
+                <button onclick="deleteDevice('{{ device.id }}', '{{ device.name }}')" class="btn btn-danger btn-block">
+                    <i class="fas fa-trash"></i> Удалить
+                </button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal for editing device -->
+<!-- Modal: редактировать -->
 <div id="editDeviceModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -89,68 +103,65 @@
         </div>
         <form id="edit-device-form">
             {% csrf_token %}
-            <div style="padding: 20px;">
-                <div class="form-group">
-                    <label for="edit-device-name">Название устройства *</label>
-                    <input type="text" id="edit-device-name" name="name" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label for="edit-device-serial">Серийный номер *</label>
-                    <input type="text" id="edit-device-serial" name="serial_number" class="form-control" required disabled>
-                </div>
-                <div class="form-group">
-                    <label for="edit-device-type">Тип устройства *</label>
-                    <select id="edit-device-type" name="device_type" class="form-control" required>
-                        <option value="">-- Выберите тип --</option>
-                        <option value="1">Датчик температуры</option>
-                        <option value="2">Датчик влажности</option>
-                        <option value="3">Датчик давления</option>
-                        <option value="4">Умная розетка</option>
-                        <option value="5">LED лампа</option>
-                        <option value="6">Контроллер</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="edit-device-status">Статус</label>
-                    <select id="edit-device-status" name="status" class="form-control">
-                        <option value="inactive">Неактивно</option>
-                        <option value="active">Активно</option>
-                        <option value="disconnected">Отключено</option>
-                        <option value="error">Ошибка</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="edit-device-location">Место установки</label>
-                    <input type="text" id="edit-device-location" name="location_name" class="form-control" placeholder="Например: Офис №1, Комната 101">
-                </div>
-                <div class="form-group">
-                    <label for="edit-device-description">Описание</label>
-                    <textarea id="edit-device-description" name="description" class="form-control" rows="3"></textarea>
-                </div>
-                <input type="hidden" id="edit-device-id" value="">
+            <div class="form-group">
+                <label for="edit-device-name">Название *</label>
+                <input type="text" id="edit-device-name" name="name" class="form-control" required>
             </div>
+            <div class="form-group">
+                <label for="edit-device-serial">Серийный номер</label>
+                <input type="text" id="edit-device-serial" name="serial_number" class="form-control" disabled>
+            </div>
+            <div class="form-group">
+                <label for="edit-device-type">Тип *</label>
+                <select id="edit-device-type" name="device_type" class="form-control" required>
+                    <option value="">— Выберите тип —</option>
+                    <option value="1">Датчик температуры</option>
+                    <option value="2">Датчик влажности</option>
+                    <option value="3">Датчик давления</option>
+                    <option value="4">Умная розетка</option>
+                    <option value="5">LED лампа</option>
+                    <option value="6">Контроллер</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="edit-device-status">Статус</label>
+                <select id="edit-device-status" name="status" class="form-control">
+                    <option value="active">Активно</option>
+                    <option value="inactive">Неактивно</option>
+                    <option value="disconnected">Отключено</option>
+                    <option value="error">Ошибка</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="edit-device-location">Место установки</label>
+                <input type="text" id="edit-device-location" name="location_name" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="edit-device-description">Описание</label>
+                <textarea id="edit-device-description" name="description" class="form-control" rows="3"></textarea>
+            </div>
+            <input type="hidden" id="edit-device-id" value="">
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Отмена</button>
-                <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+                <button type="submit" class="btn btn-primary">Сохранить</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Modal for viewing chart -->
+<!-- Modal: график -->
 <div id="chartModal" class="modal">
-    <div class="modal-content" style="max-width: 900px;">
+    <div class="modal-content" style="max-width:820px;">
         <div class="modal-header">
-            <h3>График <span id="chart-title"></span></h3>
+            <h3>График — <span id="chart-title"></span></h3>
             <span class="close" data-dismiss="modal">&times;</span>
         </div>
-        <div style="padding: 20px;">
-            <canvas id="telemetryChart" height="300"></canvas>
+        <div style="padding:var(--space-6);">
+            <canvas id="telemetryChart" height="280"></canvas>
         </div>
         <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-dismiss="modal">Закрыть</button>
         </div>
     </div>
 </div>
-
 {% endblock %}
