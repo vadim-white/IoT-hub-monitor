@@ -1,7 +1,7 @@
 databases:
   - name: iot-hub-postgres
     databaseName: iot_hub_db
-    user: postgres
+    user: iot_hub_user
     plan: free
     region: frankfurt
 
