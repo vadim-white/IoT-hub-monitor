@@ -139,21 +139,57 @@ def dashboard(request):
 @login_required(login_url='login')
 def devices_list(request):
     """Список устройств."""
+    from collections import defaultdict
+    from django.contrib.auth.models import User as AuthUser
+    from iot_hub.apps.devices.models import DeviceMetric
+
     user = request.user
-    if hasattr(user, 'role') and user.role.is_admin:
-        devices = Device.objects.all()
+    is_admin = user.is_superuser or (hasattr(user, 'role') and user.role.is_admin)
+
+    if is_admin:
+        devices = Device.objects.select_related('device_type', 'owner').all()
+
+        grouped = defaultdict(list)
+        for device in devices:
+            grouped[device.owner].append(device)
+
+        users_with_devices = [
+            {'user': owner, 'devices': dev_list, 'count': len(dev_list)}
+            for owner, dev_list in grouped.items()
+        ]
+
+        all_users = AuthUser.objects.select_related('role').order_by('username')
+
+        context = {
+            'is_admin': True,
+            'users_with_devices': users_with_devices,
+            'total_devices': devices.count(),
+            'active_devices': devices.filter(is_active=True).count(),
+            'all_users': all_users,
+        }
     else:
-        devices = Device.objects.filter(owner=user)
-    
-    context = {'devices': devices}
+        devices = Device.objects.filter(owner=user).select_related('device_type')
+        context = {
+            'is_admin': False,
+            'devices': devices,
+            'total_devices': devices.count(),
+            'active_devices': devices.filter(is_active=True).count(),
+        }
+
     return render(request, 'devices/list.html', context)
 
 
 @login_required(login_url='login')
 def device_detail(request, device_id):
     """Детали устройства."""
+    from iot_hub.apps.devices.models import AlertThreshold
     device = Device.objects.get(id=device_id)
-    context = {'device': device}
+    metrics = device.metrics.select_related().prefetch_related('thresholds')
+    context = {
+        'device': device,
+        'metrics': metrics,
+        'thresholds': AlertThreshold.objects.filter(metric__device=device),
+    }
     return render(request, 'devices/detail.html', context)
 
 
@@ -161,11 +197,12 @@ def device_detail(request, device_id):
 def alerts_list(request):
     """Список алертов."""
     user = request.user
-    if hasattr(user, 'role') and user.role.is_admin:
+    is_admin = user.is_superuser or (hasattr(user, 'role') and user.role.is_admin)
+    if is_admin:
         alerts = Alert.objects.all()
     else:
         alerts = Alert.objects.filter(device__owner=user)
-    
+
     context = {'alerts': alerts}
     return render(request, 'alerts/list.html', context)
 
@@ -174,10 +211,11 @@ def alerts_list(request):
 def telemetry_view(request):
     """Просмотр телеметрии."""
     user = request.user
-    if hasattr(user, 'role') and user.role.is_admin:
+    is_admin = user.is_superuser or (hasattr(user, 'role') and user.role.is_admin)
+    if is_admin:
         telemetry = Telemetry.objects.all()
     else:
         telemetry = Telemetry.objects.filter(device__owner=user)
-    
+
     context = {'telemetry': telemetry}
     return render(request, 'telemetry/list.html', context)
