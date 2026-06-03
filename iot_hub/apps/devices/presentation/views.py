@@ -100,11 +100,14 @@ def devices_list(request):
             for owner, dev_list in grouped.items()
         ]
 
+        all_users = User.objects.select_related('role').order_by('username')
+
         context = {
             'is_admin': True,
             'users_with_devices': users_with_devices,
             'total_devices': devices.count(),
             'active_devices': devices.filter(is_active=True).count(),
+            'all_users': all_users,
         }
     else:
         devices = Device.objects.filter(owner=request.user).select_related('device_type')
@@ -163,8 +166,15 @@ class DeviceViewSet(viewsets.ModelViewSet):
         return DeviceSerializer
     
     def perform_create(self, serializer):
-        device = serializer.save(owner=self.request.user)
-        # Создать метрики по умолчанию для устройства
+        user = self.request.user
+        is_admin = hasattr(user, 'role') and user.role.is_admin
+        # Admins can specify owner via payload; everyone else owns their own device
+        provided_owner = serializer.validated_data.get('owner')
+        if is_admin and provided_owner:
+            owner = provided_owner
+        else:
+            owner = user
+        device = serializer.save(owner=owner)
         create_default_metrics(device)
     
     @action(detail=True, methods=['post'])

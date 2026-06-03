@@ -108,7 +108,7 @@
     <!-- ══════════ ОБЫЧНЫЙ ПОЛЬЗОВАТЕЛЬ: обычная таблица ══════════ -->
     <div class="card">
         <div class="card-header">
-            <h3>Мои устройства ({{ total_devices }})</h3>
+            <h3>Мои устройства <span class="device-count">{{ total_devices }}</span></h3>
         </div>
         <div class="card-body">
             <table class="table">
@@ -176,6 +176,17 @@
         <form id="add-device-form">
             {% csrf_token %}
             <div style="padding: 20px;">
+                {% if is_admin %}
+                <div class="form-group">
+                    <label for="device-owner">Владелец устройства *</label>
+                    <select id="device-owner" name="owner" class="form-control" required>
+                        <option value="">-- Выберите пользователя --</option>
+                        {% for u in all_users %}
+                        <option value="{{ u.id }}">{{ u.get_full_name|default:u.username }} (@{{ u.username }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
                 <div class="form-group">
                     <label for="device-name">Название устройства *</label>
                     <input type="text" id="device-name" name="name" class="form-control" required>
