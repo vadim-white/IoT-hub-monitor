@@ -414,6 +414,8 @@ $(document).ready(function() {
             status: $('#device-status').val(),
             location_name: $('#device-location').val()
         };
+        const ownerVal = $('#device-owner').val();
+        if (ownerVal) formData.owner = parseInt(ownerVal);
         
         API.post('/api/devices/devices/', formData)
             .then(response => {

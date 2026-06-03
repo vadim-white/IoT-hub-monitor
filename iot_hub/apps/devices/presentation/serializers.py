@@ -43,8 +43,14 @@ class DeviceSerializer(serializers.ModelSerializer):
 
 
 class DeviceCreateUpdateSerializer(serializers.ModelSerializer):
+    owner = serializers.PrimaryKeyRelatedField(
+        queryset=__import__('django.contrib.auth.models', fromlist=['User']).User.objects.all(),
+        required=False,
+        allow_null=True
+    )
+
     class Meta:
         model = Device
-        fields = ['serial_number', 'name', 'description', 'device_type', 'status',
-                  'latitude', 'longitude', 'location_name', 'installation_date', 
+        fields = ['serial_number', 'name', 'description', 'device_type', 'owner', 'status',
+                  'latitude', 'longitude', 'location_name', 'installation_date',
                   'is_active', 'metadata']

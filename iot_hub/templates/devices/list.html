@@ -105,14 +105,25 @@
     </div>
 
     {% else %}
-    <!-- ══════════ ОБЫЧНЫЙ ПОЛЬЗОВАТЕЛЬ: обычная таблица ══════════ -->
+    <!-- ══════════ ОБЫЧНЫЙ ПОЛЬЗОВАТЕЛЬ: аккордеон ══════════ -->
     <div class="card">
-        <div class="card-header">
-            <h3>Мои устройства ({{ total_devices }})</h3>
+        <div class="accordion-header"
+             onclick="toggleAccordion('my-devices')"
+             style="display:flex; align-items:center; justify-content:space-between;
+                    padding: 14px 20px; cursor:pointer;
+                    background:#f8f9fa; user-select:none; border-radius: 8px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <i class="fas fa-hdd" style="font-size:1.2rem; color:#6c757d;"></i>
+                <strong style="font-size:1rem;">Мои устройства</strong>
+                <span style="color:#6c757d; font-size:0.85rem;">{{ total_devices }} устр.</span>
+            </div>
+            <i class="fas fa-chevron-down accordion-icon" id="icon-my-devices"
+               style="transition: transform 0.25s; color:#6c757d;"></i>
         </div>
-        <div class="card-body">
-            <table class="table">
-                <thead>
+
+        <div id="my-devices">
+            <table class="table" style="margin:0;">
+                <thead style="background:#f1f3f5;">
                     <tr>
                         <th>Название</th>
                         <th>Серийный номер</th>
@@ -156,7 +167,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center">Нет устройств</td>
+                        <td colspan="6" class="text-center" style="padding:20px; color:#6c757d;">Нет устройств</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -176,6 +187,17 @@
         <form id="add-device-form">
             {% csrf_token %}
             <div style="padding: 20px;">
+                {% if is_admin %}
+                <div class="form-group">
+                    <label for="device-owner">Владелец устройства *</label>
+                    <select id="device-owner" name="owner" class="form-control" required>
+                        <option value="">-- Выберите пользователя --</option>
+                        {% for u in all_users %}
+                        <option value="{{ u.id }}">{{ u.get_full_name|default:u.username }} (@{{ u.username }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
                 <div class="form-group">
                     <label for="device-name">Название устройства *</label>
                     <input type="text" id="device-name" name="name" class="form-control" required>

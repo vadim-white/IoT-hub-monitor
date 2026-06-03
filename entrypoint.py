@@ -126,7 +126,13 @@ def main():
         "python load_telemetry_data.py",
         "Loading telemetry data"
     )
-    
+
+    # Seed demo alerts
+    run_command(
+        "python seed_alerts.py",
+        "Seeding demo alerts"
+    )
+
     # Start gunicorn
     logger.info("Starting gunicorn...")
     cmd = (
