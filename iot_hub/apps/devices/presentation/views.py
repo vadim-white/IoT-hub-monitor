@@ -166,10 +166,13 @@ class DeviceViewSet(viewsets.ModelViewSet):
         return DeviceSerializer
     
     def perform_create(self, serializer):
+        import logging
+        logger = logging.getLogger(__name__)
         user = self.request.user
         is_admin = hasattr(user, 'role') and user.role.is_admin
         provided_owner = serializer.validated_data.pop('owner', None)
         owner = provided_owner if (is_admin and provided_owner) else user
+        logger.warning(f"[perform_create] request_user={user.username} is_admin={is_admin} provided_owner={provided_owner} final_owner={owner}")
         device = serializer.save(owner=owner)
         create_default_metrics(device)
     

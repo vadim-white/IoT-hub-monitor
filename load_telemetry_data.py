@@ -479,10 +479,29 @@ def load_telemetry_data():
     return True
 
 
+def fix_device_owners():
+    """Исправляет owner для устройств пользователей — на случай если они были созданы с owner=admin."""
+    fixed = 0
+    for user_cfg in USERS_CONFIG:
+        user = User.objects.filter(username=user_cfg['username']).first()
+        if not user:
+            continue
+        for dev_cfg in user_cfg['devices']:
+            updated = Device.objects.filter(
+                serial_number=dev_cfg['serial_number']
+            ).exclude(owner=user).update(owner=user)
+            fixed += updated
+    if fixed:
+        print(f"🔧 Исправлен owner для {fixed} устройств")
+    else:
+        print("✅ Owner у всех устройств корректный")
+
+
 def main():
     print("\n=== ИНИЦИАЛИЗАЦИЯ БД ===\n")
     create_device_types_and_devices()
     create_extra_users_and_devices()
+    fix_device_owners()
     load_telemetry_data()
     print("\n✅ Инициализация завершена!\n")
 
