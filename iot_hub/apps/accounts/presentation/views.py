@@ -123,7 +123,7 @@ class UserViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Фильтр для доступа пользователей только к своим данным и админу."""
         user = self.request.user
-        if hasattr(user, 'role') and user.role.is_admin:
+        if user.is_superuser or (hasattr(user, 'role') and user.role.is_admin):
             return User.objects.select_related('role', 'profile')
         return User.objects.filter(id=user.id).select_related('role', 'profile')
     
@@ -189,7 +189,7 @@ class UserRoleViewSet(viewsets.ReadOnlyModelViewSet):
     
     def get_queryset(self):
         user = self.request.user
-        if hasattr(user, 'role') and user.role.is_admin:
+        if user.is_superuser or (hasattr(user, 'role') and user.role.is_admin):
             return UserRole.objects.all()
         return UserRole.objects.filter(user=user)
 

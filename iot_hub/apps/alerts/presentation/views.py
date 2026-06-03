@@ -56,7 +56,7 @@ class AlertViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         user = self.request.user
-        if hasattr(user, 'role') and user.role.is_admin:
+        if user.is_superuser or (hasattr(user, 'role') and user.role.is_admin):
             return Alert.objects.select_related('device', 'metric').prefetch_related('history', 'notifications')
         return Alert.objects.filter(device__owner=user).select_related('device', 'metric').prefetch_related('history', 'notifications')
     

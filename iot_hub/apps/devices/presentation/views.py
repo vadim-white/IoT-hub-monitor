@@ -81,7 +81,7 @@ def devices_list(request):
     from django.contrib.auth.models import User
     from collections import defaultdict
 
-    is_admin = hasattr(request.user, 'role') and request.user.role.is_admin
+    is_admin = request.user.is_superuser or (hasattr(request.user, 'role') and request.user.role.is_admin)
 
     if is_admin:
         devices = Device.objects.select_related('device_type', 'owner').all()
@@ -127,7 +127,8 @@ def device_detail(request, device_id):
     device = get_object_or_404(Device, id=device_id)
     
     # Проверка доступа
-    if not (request.user == device.owner or 
+    if not (request.user == device.owner or
+            request.user.is_superuser or
             (hasattr(request.user, 'role') and request.user.role.is_admin)):
         return render(request, 'error.html', {'message': 'Access denied'}, status=403)
     
@@ -156,7 +157,7 @@ class DeviceViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         user = self.request.user
-        if hasattr(user, 'role') and user.role.is_admin:
+        if user.is_superuser or (hasattr(user, 'role') and user.role.is_admin):
             return Device.objects.select_related('device_type', 'owner').all()
         return Device.objects.filter(owner=user).select_related('device_type', 'owner')
     
@@ -166,13 +167,10 @@ class DeviceViewSet(viewsets.ModelViewSet):
         return DeviceSerializer
     
     def perform_create(self, serializer):
-        import logging
-        logger = logging.getLogger(__name__)
         user = self.request.user
-        is_admin = hasattr(user, 'role') and user.role.is_admin
+        is_admin = user.is_superuser or (hasattr(user, 'role') and user.role.is_admin)
         provided_owner = serializer.validated_data.pop('owner', None)
         owner = provided_owner if (is_admin and provided_owner) else user
-        logger.warning(f"[perform_create] request_user={user.username} is_admin={is_admin} provided_owner={provided_owner} final_owner={owner}")
         device = serializer.save(owner=owner)
         create_default_metrics(device)
     
@@ -225,7 +223,7 @@ class DeviceMetricViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         # Фильтр только для метрик устройств текущего пользователя
         user = self.request.user
-        if hasattr(user, 'role') and user.role.is_admin:
+        if user.is_superuser or (hasattr(user, 'role') and user.role.is_admin):
             return DeviceMetric.objects.all()
         return DeviceMetric.objects.filter(device__owner=user)
 
@@ -237,6 +235,6 @@ class AlertThresholdViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         user = self.request.user
-        if hasattr(user, 'role') and user.role.is_admin:
+        if user.is_superuser or (hasattr(user, 'role') and user.role.is_admin):
             return AlertThreshold.objects.all()
         return AlertThreshold.objects.filter(metric__device__owner=user)
