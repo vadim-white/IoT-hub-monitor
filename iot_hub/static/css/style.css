@@ -801,6 +801,14 @@ body {
     .nav-link { font-size: 13px; padding: 4px 6px; }
 }
 
+/* alert row closed state */
+.alert-row--closed {
+    background: rgba(52, 199, 89, 0.06) !important;
+    border-left-color: var(--apple-success) !important;
+}
+.alert-row--closed .alert-message { color: var(--apple-muted); }
+.opacity-50 { opacity: 0.45; }
+
 /* device count badge */
 .device-count {
     display: inline-flex;

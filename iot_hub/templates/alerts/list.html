@@ -16,18 +16,56 @@
         <div class="card-header"><h3>Все алерты</h3></div>
 
         {% for alert in alerts %}
-        <div class="alert-row alert-{{ alert.severity }}">
+        <div class="alert-row alert-{{ alert.severity }} {% if alert.status == 'closed' %}alert-row--closed{% endif %}"
+             id="alert-row-{{ alert.id }}" data-status="{{ alert.status }}">
             <div>
                 <div class="alert-severity">{{ alert.get_severity_display }}</div>
                 <div class="alert-message">{{ alert.message }}</div>
                 <div class="alert-device"><i class="fas fa-microchip" style="font-size:11px;"></i> {{ alert.device.name }}</div>
             </div>
-            <div><span class="badge badge-{{ alert.status }}">{{ alert.get_status_display }}</span></div>
+            <div><span class="badge badge-{{ alert.status }}" id="badge-{{ alert.id }}">{{ alert.get_status_display }}</span></div>
             <div style="font-size:13px;color:var(--apple-muted);white-space:nowrap;">{{ alert.created_at|date:"d.m.Y H:i" }}</div>
             <div style="display:flex;gap:6px;">
-                <button class="btn btn-sm btn-secondary" title="Подтвердить"><i class="fas fa-check"></i></button>
-                <button class="btn btn-sm btn-primary" title="Разрешить"><i class="fas fa-check-double"></i></button>
-                <button class="btn btn-sm btn-danger" title="Закрыть"><i class="fas fa-times"></i></button>
+                {% if is_admin %}
+                    {# Админ: Подтвердить + Разрешить + Закрыть #}
+                    <button class="btn btn-sm btn-secondary alert-action-btn
+                            {% if alert.status != 'new' %}opacity-50{% endif %}"
+                            title="Подтвердить"
+                            onclick="alertAction('{{ alert.id }}', 'acknowledge')"
+                            {% if alert.status != 'new' %}disabled{% endif %}>
+                        <i class="fas fa-check"></i>
+                    </button>
+                    <button class="btn btn-sm btn-primary alert-action-btn
+                            {% if alert.status == 'resolved' or alert.status == 'closed' %}opacity-50{% endif %}"
+                            title="Разрешить"
+                            onclick="alertAction('{{ alert.id }}', 'resolve')"
+                            {% if alert.status == 'resolved' or alert.status == 'closed' %}disabled{% endif %}>
+                        <i class="fas fa-check-double"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger alert-action-btn
+                            {% if alert.status == 'closed' %}opacity-50{% endif %}"
+                            title="Закрыть"
+                            onclick="alertAction('{{ alert.id }}', 'close')"
+                            {% if alert.status == 'closed' %}disabled{% endif %}>
+                        <i class="fas fa-times"></i>
+                    </button>
+                {% else %}
+                    {# Обычный пользователь: Прочитано + Закрыть #}
+                    <button class="btn btn-sm btn-secondary alert-action-btn
+                            {% if alert.status != 'new' %}opacity-50{% endif %}"
+                            title="Прочитано"
+                            onclick="alertAction('{{ alert.id }}', 'acknowledge')"
+                            {% if alert.status != 'new' %}disabled{% endif %}>
+                        <i class="fas fa-eye"></i> Прочитано
+                    </button>
+                    <button class="btn btn-sm btn-danger alert-action-btn
+                            {% if alert.status == 'closed' %}opacity-50{% endif %}"
+                            title="Закрыть"
+                            onclick="alertAction('{{ alert.id }}', 'close')"
+                            {% if alert.status == 'closed' %}disabled{% endif %}>
+                        <i class="fas fa-times"></i> Закрыть
+                    </button>
+                {% endif %}
             </div>
         </div>
         {% empty %}
@@ -38,4 +76,63 @@
         {% endfor %}
     </div>
 </div>
+
+<script>
+const STATUS_LABELS = {
+    'new': 'Новый',
+    'acknowledged': 'Подтвержден',
+    'resolved': 'Разрешен',
+    'closed': 'Закрыт',
+};
+
+function alertAction(alertId, action) {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    fetch(`/api/alerts/alerts/${alertId}/${action}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+        },
+    })
+    .then(r => r.json())
+    .then(() => {
+        const newStatus = action === 'acknowledge' ? 'acknowledged'
+                        : action === 'resolve'     ? 'resolved'
+                        :                            'closed';
+
+        const row   = document.getElementById('alert-row-' + alertId);
+        const badge = document.getElementById('badge-' + alertId);
+
+        // Обновляем бейдж
+        badge.className = 'badge badge-' + newStatus;
+        badge.textContent = STATUS_LABELS[newStatus];
+
+        // Статус строки
+        row.dataset.status = newStatus;
+
+        if (newStatus === 'closed') {
+            row.classList.add('alert-row--closed');
+        }
+
+        // Обновляем кнопки
+        row.querySelectorAll('.alert-action-btn').forEach(btn => {
+            const t = btn.getAttribute('title');
+            let shouldDisable = false;
+
+            if (t === 'Подтвердить' || t === 'Прочитано') {
+                shouldDisable = newStatus !== 'new';
+            } else if (t === 'Разрешить') {
+                shouldDisable = newStatus === 'resolved' || newStatus === 'closed';
+            } else if (t === 'Закрыть') {
+                shouldDisable = newStatus === 'closed';
+            }
+
+            btn.disabled = shouldDisable;
+            btn.classList.toggle('opacity-50', shouldDisable);
+        });
+    })
+    .catch(() => alert('Ошибка при обновлении алерта'));
+}
+</script>
 {% endblock %}

@@ -203,7 +203,13 @@ def alerts_list(request):
     else:
         alerts = Alert.objects.filter(device__owner=user)
 
-    context = {'alerts': alerts}
+    context = {
+        'alerts': alerts,
+        'is_admin': is_admin,
+        'new_count': alerts.filter(status='new').count(),
+        'acknowledged_count': alerts.filter(status='acknowledged').count(),
+        'resolved_count': alerts.filter(status='resolved').count(),
+    }
     return render(request, 'alerts/list.html', context)
 
 
