@@ -167,12 +167,14 @@ class DeviceViewSet(viewsets.ModelViewSet):
         return DeviceSerializer
     
     def perform_create(self, serializer):
+        from iot_hub.apps.devices.csv_telemetry import load_csv_telemetry_for_device
         user = self.request.user
         is_admin = user.is_superuser or (hasattr(user, 'role') and user.role.is_admin)
         provided_owner = serializer.validated_data.pop('owner', None)
         owner = provided_owner if (is_admin and provided_owner) else user
         device = serializer.save(owner=owner)
         create_default_metrics(device)
+        load_csv_telemetry_for_device(device)
     
     @action(detail=True, methods=['post'])
     def activate(self, request, pk=None):
