@@ -88,7 +88,7 @@ def register_view(request):
 def logout_view(request):
     """Выход пользователя из системы."""
     logout(request)
-    return redirect('login')
+    return redirect('index')
 
 
 @login_required(login_url='login')
