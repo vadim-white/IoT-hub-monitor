@@ -1,6 +1,31 @@
 {% extends "base.html" %}
 {% block title %}Алерты — IoT Hub Monitor{% endblock %}
 
+{% block extra_css %}
+<style>
+@media (max-width: 640px) {
+    .page-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .page-header h1 { font-size: 20px; }
+    .alert-stats { flex-wrap: wrap; gap: 8px; }
+
+    .alert-row {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        padding: 14px 16px;
+    }
+    .alert-row > div:nth-child(3) { /* дата */
+        order: -1;
+        font-size: 11px !important;
+    }
+    .alert-row > div:last-child { /* кнопки */
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container">
     <div class="page-header">

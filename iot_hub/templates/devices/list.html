@@ -64,14 +64,14 @@
                         <tbody>
                             {% for device in group.devices %}
                             <tr id="device-row-{{ device.id }}">
-                                <td>
+                                <td data-label="Название">
                                     <a href="{% url 'device_detail' device.id %}" style="text-decoration:none; color:inherit;">
                                         <strong>{{ device.name }}</strong>
                                     </a>
                                 </td>
-                                <td>{{ device.serial_number }}</td>
-                                <td>{{ device.device_type.name }}</td>
-                                <td>
+                                <td data-label="Серийный №">{{ device.serial_number }}</td>
+                                <td data-label="Тип">{{ device.device_type.name }}</td>
+                                <td data-label="Статус">
                                     <button class="device-toggle {% if device.is_active %}device-toggle--on{% endif %}"
                                             onclick="toggleDevice('{{ device.id }}', this)"
                                             title="Переключить активность">
@@ -79,14 +79,14 @@
                                         <span class="device-toggle__label">{% if device.is_active %}Активно{% else %}Неактивно{% endif %}</span>
                                     </button>
                                 </td>
-                                <td>
+                                <td data-label="Последний контакт">
                                     {% if device.last_seen_at %}
                                         {{ device.last_seen_at|timesince }} назад
                                     {% else %}
                                         <em>Никогда</em>
                                     {% endif %}
                                 </td>
-                                <td>
+                                <td data-label="Действия">
                                     <button onclick="viewDeviceMetrics('{{ device.id }}', '{{ device.name }}')" class="btn btn-sm btn-info" title="Просмотр метрик">
                                         <i class="fas fa-eye"></i>
                                     </button>
@@ -141,14 +141,14 @@
                 <tbody>
                     {% for device in devices %}
                     <tr id="device-row-{{ device.id }}">
-                        <td>
+                        <td data-label="Название">
                             <a href="{% url 'device_detail' device.id %}" style="text-decoration:none; color:inherit;">
                                 <strong>{{ device.name }}</strong>
                             </a>
                         </td>
-                        <td>{{ device.serial_number }}</td>
-                        <td>{{ device.device_type.name }}</td>
-                        <td>
+                        <td data-label="Серийный №">{{ device.serial_number }}</td>
+                        <td data-label="Тип">{{ device.device_type.name }}</td>
+                        <td data-label="Статус">
                             <button class="device-toggle {% if device.is_active %}device-toggle--on{% endif %}"
                                     onclick="toggleDevice('{{ device.id }}', this)"
                                     title="Переключить активность">
@@ -156,14 +156,14 @@
                                 <span class="device-toggle__label">{% if device.is_active %}Активно{% else %}Неактивно{% endif %}</span>
                             </button>
                         </td>
-                        <td>
+                        <td data-label="Последний контакт">
                             {% if device.last_seen_at %}
                                 {{ device.last_seen_at|timesince }} назад
                             {% else %}
                                 <em>Никогда</em>
                             {% endif %}
                         </td>
-                        <td>
+                        <td data-label="Действия">
                             <button onclick="viewDeviceMetrics('{{ device.id }}', '{{ device.name }}')" class="btn btn-sm btn-info" title="Просмотр метрик">
                                 <i class="fas fa-eye"></i>
                             </button>
@@ -319,6 +319,61 @@
 </div>
 
 <style>
+/* ── Mobile: table → cards ── */
+@media (max-width: 640px) {
+    .page-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .page-header h1 { font-size: 20px; }
+
+    /* hide table headers */
+    .table thead { display: none; }
+
+    /* each row becomes a card */
+    .table, .table tbody, .table tr, .table td {
+        display: block;
+        width: 100%;
+    }
+    .table tr {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        margin: 8px 12px;
+        width: calc(100% - 24px);
+        padding: 12px;
+        background: var(--bg-4);
+        position: relative;
+    }
+    .table tr:hover { background: var(--bg-4); }
+    .table td {
+        border: none;
+        padding: 4px 0;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    /* label before each cell value */
+    .table td::before {
+        content: attr(data-label);
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-muted);
+        min-width: 90px;
+        flex-shrink: 0;
+    }
+    .table td:first-child { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+    .table td[data-label="Действия"] { margin-top: 8px; gap: 8px; flex-wrap: wrap; }
+    .table td[data-label="Действия"]::before { display: none; }
+
+    /* toggle fits mobile */
+    .device-toggle { width: 95px; }
+    .device-toggle--on .device-toggle__thumb { transform: translateX(67px); }
+
+    /* accordion header compact */
+    .accordion-header strong { font-size: 0.9rem; }
+    .accordion-header span[style*="0.85rem"] { display: none; }
+}
+
 .device-toggle {
     display: inline-flex;
     align-items: center;
