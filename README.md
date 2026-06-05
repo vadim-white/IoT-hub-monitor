@@ -157,7 +157,7 @@ docker-compose exec web python manage.py createsuperuser
 
 ---
 
-## 🔒 Безопасность и тестирование
+## Безопасность и тестирование
 
 ### Fuzzing тесты
 Проект включает comprehensive fuzzing тест-сьют для проверки безопасности API:
@@ -181,7 +181,7 @@ docker-compose exec -T web python run_fuzzing_tests.py
 
 ## 📄 Лицензия
 
-Проект распространяется под лицензией MIT. Подробности — в файле `LICENSE`.
+Проект распространяется под лицензией MIT. Подробности — в файле `LICENSE`. 
 
 ---
 
