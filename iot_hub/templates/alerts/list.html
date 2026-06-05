@@ -3,25 +3,37 @@
 
 {% block extra_css %}
 <style>
-@media (max-width: 640px) {
+@media (max-width: 700px) {
     .page-header { flex-direction: column; align-items: flex-start; gap: 10px; }
     .page-header h1 { font-size: 20px; }
     .alert-stats { flex-wrap: wrap; gap: 8px; }
 
     .alert-row {
-        grid-template-columns: 1fr;
-        gap: 10px;
-        padding: 14px 16px;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        padding: 14px 16px !important;
+        border-left-width: 3px !important;
     }
-    .alert-row > div:nth-child(3) { /* дата */
+    /* дата — вверх */
+    .alert-row > div:nth-child(3) {
         order: -1;
         font-size: 11px !important;
+        color: var(--text-muted) !important;
     }
-    .alert-row > div:last-child { /* кнопки */
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
+    /* бейдж */
+    .alert-row > div:nth-child(2) { order: 0; }
+    /* текст алерта */
+    .alert-row > div:nth-child(1) { order: 1; }
+    /* кнопки — снизу, перенос */
+    .alert-row > div:last-child {
+        order: 2;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
     }
+    /* кнопки с текстом — убираем текст, оставляем иконку */
+    .alert-action-btn { min-width: 36px; }
 }
 </style>
 {% endblock %}
