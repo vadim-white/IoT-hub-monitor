@@ -17,19 +17,19 @@
         </div>
         <div class="card-body" style="padding: 0;">
             {% for group in users_with_devices %}
-            <div class="accordion-item" style="border-bottom: 1px solid #e0e0e0;">
+            <div class="accordion-item" style="border-bottom: 1px solid var(--border);">
 
                 <!-- Заголовок пользователя (кликабельный) -->
                 <div class="accordion-header"
                      onclick="toggleAccordion('user-{{ group.user.id }}')"
                      style="display:flex; align-items:center; justify-content:space-between;
                             padding: 14px 20px; cursor:pointer;
-                            background:#f8f9fa; user-select:none;">
+                            background:var(--bg-4); user-select:none;">
                     <div style="display:flex; align-items:center; gap:12px;">
-                        <i class="fas fa-user-circle" style="font-size:1.4rem; color:#6c757d;"></i>
+                        <i class="fas fa-user-circle" style="font-size:1.4rem; color:var(--text-muted);"></i>
                         <div>
                             <strong>{{ group.user.get_full_name|default:group.user.username }}</strong>
-                            <span style="color:#6c757d; font-size:0.85rem; margin-left:8px;">@{{ group.user.username }}</span>
+                            <span style="color:var(--text-muted); font-size:0.85rem; margin-left:8px;">@{{ group.user.username }}</span>
                             {% if group.user.role.role %}
                             <span class="badge" style="margin-left:8px;
                                 background:{% if group.user.role.role == 'admin' %}#dc3545{% elif group.user.role.role == 'operator' %}#fd7e14{% else %}#0d6efd{% endif %};
@@ -40,18 +40,18 @@
                         </div>
                     </div>
                     <div style="display:flex; align-items:center; gap:14px;">
-                        <span style="color:#6c757d; font-size:0.9rem;">
+                        <span style="color:var(--text-muted); font-size:0.9rem;">
                             <i class="fas fa-hdd"></i> {{ group.count }} устройств
                         </span>
                         <i class="fas fa-chevron-down accordion-icon" id="icon-user-{{ group.user.id }}"
-                           style="transition: transform 0.25s; color:#6c757d;"></i>
+                           style="transition: transform 0.25s; color:var(--text-muted);"></i>
                     </div>
                 </div>
 
                 <!-- Таблица устройств (скрыта по умолчанию) -->
                 <div id="user-{{ group.user.id }}" style="display:none;">
                     <table class="table" style="margin:0;">
-                        <thead style="background:#f1f3f5;">
+                        <thead style="background:var(--bg-4);">
                             <tr>
                                 <th>Название</th>
                                 <th>Серийный номер</th>
@@ -104,7 +104,7 @@
                 </div>
             </div>
             {% empty %}
-            <div style="padding:20px; text-align:center; color:#6c757d;">Устройств нет</div>
+            <div style="padding:20px; text-align:center; color:var(--text-muted);">Устройств нет</div>
             {% endfor %}
         </div>
     </div>
@@ -116,19 +116,19 @@
              onclick="toggleAccordion('my-devices')"
              style="display:flex; align-items:center; justify-content:space-between;
                     padding: 14px 20px; cursor:pointer;
-                    background:#f8f9fa; user-select:none; border-radius: 8px;">
+                    background:var(--bg-4); user-select:none; border-radius: 8px;">
             <div style="display:flex; align-items:center; gap:12px;">
-                <i class="fas fa-hdd" style="font-size:1.2rem; color:#6c757d;"></i>
+                <i class="fas fa-hdd" style="font-size:1.2rem; color:var(--text-muted);"></i>
                 <strong style="font-size:1rem;">Мои устройства</strong>
-                <span style="color:#6c757d; font-size:0.85rem;">{{ total_devices }} устр.</span>
+                <span style="color:var(--text-muted); font-size:0.85rem;">{{ total_devices }} устр.</span>
             </div>
             <i class="fas fa-chevron-down accordion-icon" id="icon-my-devices"
-               style="transition: transform 0.25s; color:#6c757d;"></i>
+               style="transition: transform 0.25s; color:var(--text-muted);"></i>
         </div>
 
         <div id="my-devices">
             <table class="table" style="margin:0;">
-                <thead style="background:#f1f3f5;">
+                <thead style="background:var(--bg-4);">
                     <tr>
                         <th>Название</th>
                         <th>Серийный номер</th>
@@ -177,7 +177,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center" style="padding:20px; color:#6c757d;">Нет устройств</td>
+                        <td colspan="6" class="text-center" style="padding:20px; color:var(--text-muted);">Нет устройств</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -348,7 +348,7 @@
     width: 24px;
     height: 24px;
     border-radius: 50%;
-    background: #fff;
+    background: var(--text);
     box-shadow: 0 2px 4px rgba(0,0,0,.2);
     flex-shrink: 0;
     transition: transform 0.3s cubic-bezier(.4,0,.2,1);
