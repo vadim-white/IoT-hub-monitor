@@ -16,6 +16,20 @@ from iot_hub.apps.accounts.presentation.serializers import (
 import secrets
 
 
+def _refresh_device_last_seen(user):
+    """При логине ставим last_seen_at всех устройств пользователя = now() - random(1..60 min)."""
+    import random
+    from django.utils import timezone
+    from datetime import timedelta
+    from iot_hub.apps.devices.models import Device
+
+    devices = Device.objects.filter(owner=user)
+    for device in devices:
+        offset = random.randint(1, 60)
+        device.last_seen_at = timezone.now() - timedelta(minutes=offset)
+    Device.objects.bulk_update(devices, ['last_seen_at'])
+
+
 # ====== WEB VIEWS ======
 
 def login_view(request):
@@ -27,6 +41,7 @@ def login_view(request):
         
         if user is not None:
             login(request, user)
+            _refresh_device_last_seen(user)
             return redirect('dashboard')
         else:
             return render(request, 'accounts/login.html', {

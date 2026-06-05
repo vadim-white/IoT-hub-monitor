@@ -176,6 +176,15 @@ class DeviceViewSet(viewsets.ModelViewSet):
         create_default_metrics(device)
         load_csv_telemetry_for_device(device)
     
+    @action(detail=True, methods=['post'], url_path='toggle-active')
+    def toggle_active(self, request, pk=None):
+        """Переключить is_active / status устройства."""
+        device = self.get_object()
+        device.is_active = not device.is_active
+        device.status = 'active' if device.is_active else 'inactive'
+        device.save(update_fields=['is_active', 'status'])
+        return Response({'is_active': device.is_active, 'status': device.status})
+
     @action(detail=True, methods=['post'])
     def activate(self, request, pk=None):
         """Активировать устройство."""

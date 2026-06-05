@@ -63,7 +63,7 @@
                         </thead>
                         <tbody>
                             {% for device in group.devices %}
-                            <tr>
+                            <tr id="device-row-{{ device.id }}">
                                 <td>
                                     <a href="{% url 'device_detail' device.id %}" style="text-decoration:none; color:inherit;">
                                         <strong>{{ device.name }}</strong>
@@ -72,7 +72,12 @@
                                 <td>{{ device.serial_number }}</td>
                                 <td>{{ device.device_type.name }}</td>
                                 <td>
-                                    <span class="badge badge-{{ device.status }}">{{ device.get_status_display }}</span>
+                                    <button class="device-toggle {% if device.is_active %}device-toggle--on{% endif %}"
+                                            onclick="toggleDevice('{{ device.id }}', this)"
+                                            title="Переключить активность">
+                                        <span class="device-toggle__thumb"></span>
+                                        <span class="device-toggle__label">{% if device.is_active %}Активно{% else %}Неактивно{% endif %}</span>
+                                    </button>
                                 </td>
                                 <td>
                                     {% if device.last_seen_at %}
@@ -135,7 +140,7 @@
                 </thead>
                 <tbody>
                     {% for device in devices %}
-                    <tr>
+                    <tr id="device-row-{{ device.id }}">
                         <td>
                             <a href="{% url 'device_detail' device.id %}" style="text-decoration:none; color:inherit;">
                                 <strong>{{ device.name }}</strong>
@@ -144,7 +149,12 @@
                         <td>{{ device.serial_number }}</td>
                         <td>{{ device.device_type.name }}</td>
                         <td>
-                            <span class="badge badge-{{ device.status }}">{{ device.get_status_display }}</span>
+                            <button class="device-toggle {% if device.is_active %}device-toggle--on{% endif %}"
+                                    onclick="toggleDevice('{{ device.id }}', this)"
+                                    title="Переключить активность">
+                                <span class="device-toggle__thumb"></span>
+                                <span class="device-toggle__label">{% if device.is_active %}Активно{% else %}Неактивно{% endif %}</span>
+                            </button>
                         </td>
                         <td>
                             {% if device.last_seen_at %}
@@ -308,6 +318,44 @@
     </div>
 </div>
 
+<style>
+.device-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #d1d5db;
+    border: none;
+    border-radius: 20px;
+    padding: 4px 10px 4px 4px;
+    cursor: pointer;
+    transition: background 0.25s;
+    font-size: 13px;
+    font-weight: 500;
+    color: #555;
+    min-width: 100px;
+    position: relative;
+    outline: none;
+}
+.device-toggle--on {
+    background: #34c759;
+    color: #fff;
+}
+.device-toggle__thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,.25);
+    flex-shrink: 0;
+    transition: none;
+}
+.device-toggle__label {
+    flex: 1;
+    text-align: center;
+    white-space: nowrap;
+}
+</style>
+
 <script>
 function toggleAccordion(id) {
     const body = document.getElementById(id);
@@ -315,6 +363,29 @@ function toggleAccordion(id) {
     const isOpen = body.style.display !== 'none';
     body.style.display = isOpen ? 'none' : 'block';
     if (icon) icon.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+}
+
+function toggleDevice(deviceId, btn) {
+    const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    btn.disabled = true;
+
+    fetch(`/api/devices/devices/${deviceId}/toggle-active/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrf, 'Content-Type': 'application/json' },
+    })
+    .then(r => r.json())
+    .then(data => {
+        const label = btn.querySelector('.device-toggle__label');
+        if (data.is_active) {
+            btn.classList.add('device-toggle--on');
+            label.textContent = 'Активно';
+        } else {
+            btn.classList.remove('device-toggle--on');
+            label.textContent = 'Неактивно';
+        }
+    })
+    .catch(() => {})
+    .finally(() => { btn.disabled = false; });
 }
 </script>
 {% endblock %}
