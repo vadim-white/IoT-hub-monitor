@@ -322,37 +322,47 @@
 .device-toggle {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
     background: #d1d5db;
     border: none;
     border-radius: 20px;
-    padding: 4px 10px 4px 4px;
+    padding: 3px 3px;
     cursor: pointer;
-    transition: background 0.25s;
-    font-size: 13px;
-    font-weight: 500;
-    color: #555;
-    min-width: 100px;
-    position: relative;
+    transition: background 0.3s ease;
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
+    width: 110px;
     outline: none;
+    position: relative;
+    user-select: none;
+}
+.device-toggle:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 .device-toggle--on {
     background: #34c759;
     color: #fff;
 }
 .device-toggle__thumb {
-    width: 22px;
-    height: 22px;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
     background: #fff;
-    box-shadow: 0 1px 3px rgba(0,0,0,.25);
+    box-shadow: 0 2px 4px rgba(0,0,0,.2);
     flex-shrink: 0;
-    transition: none;
+    transition: transform 0.3s cubic-bezier(.4,0,.2,1);
+    transform: translateX(0);
+}
+.device-toggle--on .device-toggle__thumb {
+    transform: translateX(82px);
 }
 .device-toggle__label {
-    flex: 1;
+    position: absolute;
+    width: 100%;
     text-align: center;
-    white-space: nowrap;
+    pointer-events: none;
+    transition: opacity 0.2s;
 }
 </style>
 
