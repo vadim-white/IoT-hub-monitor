@@ -548,6 +548,12 @@ body {
 }
 .chart-wrapper h3 { font-size: 14px; font-weight: 600; margin-bottom: var(--space-5); color: var(--text-2); }
 .chart-canvas-wrapper { position: relative; height: 280px; }
+.chart-legend-custom { display: flex; flex-wrap: wrap; gap: 6px 20px; padding: 12px 4px 4px; justify-content: center; }
+.chart-legend-item { display: flex; align-items: center; gap: 7px; font-size: 11px; color: #94a3b8; }
+.chart-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+@media (max-width: 700px) {
+    .chart-legend-custom { flex-direction: column; justify-content: flex-start; gap: 5px; padding: 10px 4px 4px; }
+}
 
 .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); }
 @media (max-width: 768px) { .dashboard-grid { grid-template-columns: 1fr; } }

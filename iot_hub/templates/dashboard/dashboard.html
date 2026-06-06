@@ -110,7 +110,8 @@ if (chartsData && chartsData.length > 0) {
         wrapper.className = 'chart-wrapper';
         wrapper.innerHTML = `
             <h3>${chart.title} <span style="color:var(--apple-muted);font-weight:400;">(${chart.unit})</span></h3>
-            <div class="chart-canvas-wrapper"><canvas id="chart-${index}"></canvas></div>`;
+            <div class="chart-canvas-wrapper"><canvas id="chart-${index}"></canvas></div>
+            <div id="legend-${index}" class="chart-legend-custom"></div>`;
         container.appendChild(wrapper);
 
         const labels   = chart.devices.length > 0 ? chart.devices[0].labels : [];
@@ -126,7 +127,6 @@ if (chartsData && chartsData.length > 0) {
             pointHoverRadius: 5,
         }));
 
-        const isMobile = window.innerWidth <= 700;
         new Chart(document.getElementById(`chart-${index}`).getContext('2d'), {
             type: 'line',
             data: { labels, datasets },
@@ -134,19 +134,7 @@ if (chartsData && chartsData.length > 0) {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: {
-                        position: 'bottom',
-                        align: isMobile ? 'start' : 'center',
-                        labels: {
-                            boxWidth: isMobile ? 8 : 10,
-                            padding: isMobile ? 8 : 12,
-                            font: { size: isMobile ? 10 : 11, family: '-apple-system, sans-serif' },
-                            color: '#94a3b8',
-                            usePointStyle: true,
-                            pointStyleWidth: isMobile ? 6 : 8,
-                            maxWidth: isMobile ? 130 : undefined,
-                        }
-                    },
+                    legend: { display: false },
                     tooltip: {
                         mode: 'index',
                         intersect: false,
@@ -169,6 +157,15 @@ if (chartsData && chartsData.length > 0) {
                     }
                 }
             }
+        });
+
+        // Custom HTML legend — one item per row
+        const legendEl = document.getElementById(`legend-${index}`);
+        datasets.forEach(ds => {
+            const item = document.createElement('div');
+            item.className = 'chart-legend-item';
+            item.innerHTML = `<span class="chart-legend-dot" style="background:${ds.borderColor}"></span><span class="chart-legend-name">${ds.label}</span>`;
+            legendEl.appendChild(item);
         });
     });
 } else {

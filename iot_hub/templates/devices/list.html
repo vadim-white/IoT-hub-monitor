@@ -363,17 +363,29 @@
         min-width: 110px;
         flex-shrink: 0;
     }
-    /* toggle compact on mobile */
+    /* статус: вся строка на toggle, без лейбла слева */
+    .table td[data-label="Статус"] {
+        text-align: left !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+    .table td[data-label="Статус"]::before {
+        width: auto !important;
+        min-width: 0 !important;
+        margin-bottom: 4px;
+    }
+    /* toggle на всю доступную ширину */
     .device-toggle {
-        width: 96px !important;
-        font-size: 11px !important;
+        width: 100% !important;
+        max-width: 200px !important;
+        font-size: 12px !important;
     }
     .device-toggle__thumb {
-        width: 20px !important;
-        height: 20px !important;
+        width: 22px !important;
+        height: 22px !important;
     }
     .device-toggle--on .device-toggle__thumb {
-        transform: translateX(70px) !important;
+        transform: translateX(calc(100% - 28px)) !important;
     }
     .table td[data-label="Название"] {
         font-size: 14px !important;
@@ -393,7 +405,14 @@
     .table td[data-label="Действия"]::before { display: none; }
 
     /* accordion header compact */
-    .accordion-header { padding: 12px 14px !important; }
+    .accordion-header { padding: 12px 14px !important; align-items: flex-start !important; }
+    .accordion-header > div:first-child { align-items: flex-start !important; }
+    /* имя + username + бейдж — переносить нормально */
+    .accordion-header strong { display: block; font-size: 14px; }
+    .accordion-header span[style*="text-muted"] { margin-left: 0 !important; }
+    /* правая часть: устройства + шеврон в одну строку сверху */
+    .accordion-header > div:last-child { flex-shrink: 0; align-items: center; margin-top: 2px; }
+    .accordion-header > div:last-child span { white-space: nowrap; font-size: 13px; }
 }
 
 </style>
