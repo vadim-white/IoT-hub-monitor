@@ -144,7 +144,8 @@ def devices_list(request):
 
         grouped = defaultdict(list)
         for device in devices:
-            grouped[device.owner].append(device)
+            if device.owner is not None:
+                grouped[device.owner].append(device)
 
         users_with_devices = [
             {'user': owner, 'devices': dev_list, 'count': len(dev_list)}
