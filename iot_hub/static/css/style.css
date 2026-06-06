@@ -223,6 +223,9 @@ body {
     transition: box-shadow 0.25s, transform 0.25s, border-color 0.25s;
 }
 .stat-card:hover { box-shadow: var(--shadow-card); transform: translateY(-3px); border-color: var(--border-2); }
+.stat-card-link { text-decoration: none; cursor: pointer; }
+.stat-card-link .stat-content h3,
+.stat-card-link .stat-content p { color: inherit; }
 
 .stat-icon {
     width: 52px;
@@ -705,25 +708,28 @@ body {
     display: inline-flex; align-items: center;
     background: rgba(255,255,255,0.08);
     border: none; border-radius: 20px;
-    padding: 3px 3px; cursor: pointer;
+    padding: 3px; cursor: pointer;
     transition: background 0.3s ease;
     font-size: 12px; font-weight: 700; color: var(--text-muted);
-    width: 110px; outline: none; position: relative; user-select: none;
+    width: 106px; outline: none; position: relative; user-select: none;
+    flex-shrink: 0;
 }
 .device-toggle:disabled { opacity: 0.5; cursor: not-allowed; }
 .device-toggle--on { background: var(--success); color: #fff; }
 .device-toggle__thumb {
-    width: 24px; height: 24px; border-radius: 50%;
+    width: 22px; height: 22px; border-radius: 50%;
     background: #fff;
     box-shadow: 0 2px 4px rgba(0,0,0,0.3);
     flex-shrink: 0;
     transition: transform 0.3s cubic-bezier(.4,0,.2,1);
     transform: translateX(0);
 }
-.device-toggle--on .device-toggle__thumb { transform: translateX(82px); }
+.device-toggle--on .device-toggle__thumb { transform: translateX(78px); }
 .device-toggle__label {
-    position: absolute; width: 100%;
+    position: absolute;
+    left: 0; right: 0;
     text-align: center; pointer-events: none; transition: opacity 0.2s;
+    padding: 0 4px;
 }
 
 /* ── Hamburger button ── */

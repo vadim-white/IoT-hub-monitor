@@ -12,34 +12,34 @@
 
     <!-- Stat cards -->
     <div class="dashboard-stats">
-        <div class="stat-card">
+        <a href="{% url 'devices_list' %}" class="stat-card stat-card-link">
             <div class="stat-icon bg-primary"><i class="fas fa-microchip"></i></div>
             <div class="stat-content">
                 <h3>{{ total_devices }}</h3>
                 <p>Всего устройств</p>
             </div>
-        </div>
-        <div class="stat-card">
+        </a>
+        <a href="{% url 'devices_list' %}" class="stat-card stat-card-link">
             <div class="stat-icon bg-success"><i class="fas fa-wifi"></i></div>
             <div class="stat-content">
                 <h3>{{ active_devices }}</h3>
                 <p>Активных</p>
             </div>
-        </div>
-        <div class="stat-card">
+        </a>
+        <a href="{% url 'alerts_list' %}" class="stat-card stat-card-link">
             <div class="stat-icon bg-warning"><i class="fas fa-bell"></i></div>
             <div class="stat-content">
                 <h3>{{ new_alerts }}</h3>
                 <p>Новых алертов</p>
             </div>
-        </div>
-        <div class="stat-card">
+        </a>
+        <a href="{% url 'alerts_list' %}" class="stat-card stat-card-link">
             <div class="stat-icon bg-danger"><i class="fas fa-exclamation-triangle"></i></div>
             <div class="stat-content">
                 <h3>{{ critical_alerts }}</h3>
                 <p>Критичных</p>
             </div>
-        </div>
+        </a>
     </div>
 
     <!-- Charts -->
@@ -135,9 +135,10 @@ if (chartsData && chartsData.length > 0) {
                 plugins: {
                     legend: {
                         position: 'bottom',
+                        align: 'start',
                         labels: {
                             boxWidth: 10,
-                            padding: 12,
+                            padding: 10,
                             font: { size: 11, family: '-apple-system, sans-serif' },
                             color: '#94a3b8',
                         }

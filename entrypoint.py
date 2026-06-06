@@ -127,9 +127,9 @@ def main():
         "Loading telemetry data"
     )
 
-    # Seed demo alerts
+    # Seed demo alerts (always reset to keep data fresh)
     run_command(
-        "python seed_alerts.py",
+        "python seed_alerts.py --reset",
         "Seeding demo alerts"
     )
 

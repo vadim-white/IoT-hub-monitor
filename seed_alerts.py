@@ -17,8 +17,11 @@ from django.contrib.auth.models import User
 from iot_hub.apps.devices.models import Device, DeviceMetric, AlertThreshold
 from iot_hub.apps.alerts.models import Alert
 
-# Алерты уже есть — пропускаем
-if Alert.objects.exists():
+# --reset: удалить все алерты и пересоздать
+if '--reset' in sys.argv:
+    deleted, _ = Alert.objects.all().delete()
+    print(f"🗑️  Удалено алертов: {deleted}")
+elif Alert.objects.exists():
     print("✅ Алерты уже существуют, пропуск.")
     sys.exit(0)
 
