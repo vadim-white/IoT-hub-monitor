@@ -43,9 +43,9 @@
     <div class="page-header">
         <h1><i class="fas fa-bell"></i> Алерты</h1>
         <div class="alert-stats">
-            <span class="stat"><i class="fas fa-circle" style="color:var(--apple-blue);font-size:9px;"></i> Новых: <strong>{{ new_count }}</strong></span>
-            <span class="stat"><i class="fas fa-circle" style="color:var(--apple-warning);font-size:9px;"></i> Подтверждено: <strong>{{ acknowledged_count }}</strong></span>
-            <span class="stat"><i class="fas fa-circle" style="color:var(--apple-success);font-size:9px;"></i> Разрешено: <strong>{{ resolved_count }}</strong></span>
+            <span class="stat"><i class="fas fa-circle" style="color:var(--apple-blue);font-size:9px;"></i> Новых: <strong id="count-new">{{ new_count }}</strong></span>
+            <span class="stat"><i class="fas fa-circle" style="color:var(--apple-warning);font-size:9px;"></i> Подтверждено: <strong id="count-acknowledged">{{ acknowledged_count }}</strong></span>
+            <span class="stat"><i class="fas fa-circle" style="color:var(--apple-success);font-size:9px;"></i> Разрешено: <strong id="count-resolved">{{ resolved_count }}</strong></span>
         </div>
     </div>
 
@@ -53,14 +53,36 @@
         <div class="card-header"><h3>Все алерты</h3></div>
 
         {% for alert in alerts %}
-        <div class="alert-row alert-{{ alert.severity }} {% if alert.status == 'closed' %}alert-row--closed{% endif %}"
-             id="alert-row-{{ alert.id }}" data-status="{{ alert.status }}">
-            <div>
-                <div class="alert-severity">{{ alert.get_severity_display }}</div>
-                <div class="alert-message">{{ alert.message }}</div>
-                <div class="alert-device"><i class="fas fa-microchip" style="font-size:11px;"></i> {{ alert.device.name }}</div>
+        {% with dtype=alert.device.device_type.name|lower %}
+        <div class="alert-row alert-{{ alert.severity }} {% if alert.status == 'resolved' or alert.status == 'closed' %}alert-row--closed{% endif %}"
+             id="alert-row-{{ alert.id }}" data-status="{{ alert.status }}" data-severity="{{ alert.severity }}">
+            <div style="display:flex;align-items:flex-start;gap:12px;">
+                <div class="alert-device-icon
+                    {% if 'температур' in dtype %}alert-icon-temp
+                    {% elif 'влажност' in dtype %}alert-icon-humid
+                    {% elif 'давлени' in dtype %}alert-icon-pressure
+                    {% elif 'розетк' in dtype %}alert-icon-socket
+                    {% elif 'лампа' in dtype or 'led' in dtype %}alert-icon-lamp
+                    {% elif 'контроллер' in dtype %}alert-icon-controller
+                    {% else %}alert-icon-default{% endif %}">
+                    <i class="fas
+                        {% if 'температур' in dtype %}fa-thermometer-half
+                        {% elif 'влажност' in dtype %}fa-tint
+                        {% elif 'давлени' in dtype %}fa-tachometer-alt
+                        {% elif 'розетк' in dtype %}fa-plug
+                        {% elif 'лампа' in dtype or 'led' in dtype %}fa-lightbulb
+                        {% elif 'контроллер' in dtype %}fa-microchip
+                        {% else %}fa-microchip{% endif %}"></i>
+                </div>
+                <div>
+                    <div class="alert-message">{{ alert.message }}</div>
+                    <div class="alert-device">{{ alert.device.name }}</div>
+                </div>
             </div>
-            <div><span class="badge badge-{{ alert.status }}" id="badge-{{ alert.id }}">{{ alert.get_status_display }}</span></div>
+            <div class="alert-badges">
+                <span class="badge badge-severity-{{ alert.severity }}">{{ alert.get_severity_display }}</span>
+                <span class="badge badge-{{ alert.status }}" id="badge-{{ alert.id }}">{{ alert.get_status_display }}</span>
+            </div>
             <div style="font-size:13px;color:var(--apple-muted);white-space:nowrap;">{{ alert.created_at|date:"d.m.Y H:i" }}</div>
             <div style="display:flex;gap:6px;">
                 {% if is_admin %}
@@ -105,6 +127,7 @@
                 {% endif %}
             </div>
         </div>
+        {% endwith %}
         {% empty %}
         <div style="padding:var(--space-9);text-align:center;color:var(--apple-muted);">
             <i class="fas fa-check-circle" style="font-size:32px;margin-bottom:var(--space-4);display:block;color:var(--apple-success);"></i>
@@ -145,11 +168,25 @@ function alertAction(alertId, action) {
         badge.className = 'badge badge-' + newStatus;
         badge.textContent = STATUS_LABELS[newStatus];
 
+        // Обновляем счётчики сверху
+        const oldStatus = row.dataset.status;
+        const countMap = { 'new': 'count-new', 'acknowledged': 'count-acknowledged', 'resolved': 'count-resolved' };
+        if (countMap[oldStatus]) {
+            const el = document.getElementById(countMap[oldStatus]);
+            if (el) el.textContent = Math.max(0, parseInt(el.textContent) - 1);
+        }
+        if (countMap[newStatus]) {
+            const el = document.getElementById(countMap[newStatus]);
+            if (el) el.textContent = parseInt(el.textContent) + 1;
+        }
+
         // Статус строки
         row.dataset.status = newStatus;
 
-        if (newStatus === 'closed') {
+        if (newStatus === 'resolved' || newStatus === 'closed') {
             row.classList.add('alert-row--closed');
+        } else {
+            row.classList.remove('alert-row--closed');
         }
 
         // Обновляем кнопки

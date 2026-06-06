@@ -114,7 +114,9 @@ body {
     height: 52px;
     display: flex;
     align-items: center;
-    gap: var(--space-7);
+    gap: var(--space-5);
+    flex-wrap: nowrap;
+    overflow: hidden;
 }
 
 .navbar-brand {
@@ -137,6 +139,8 @@ body {
     align-items: center;
     gap: var(--space-4);
     flex: 1;
+    flex-wrap: nowrap;
+    min-width: 0;
 }
 
 .navbar-right { margin-left: auto; }
@@ -465,6 +469,38 @@ body {
     background: rgba(100,116,139,0.12); color: var(--text-muted);
     border: 1px solid rgba(100,116,139,0.2);
 }
+.badge-severity-critical {
+    background: rgba(239,68,68,0.15); color: #f87171;
+    border: 1px solid rgba(239,68,68,0.35);
+}
+.badge-severity-warning {
+    background: rgba(255,149,0,0.15); color: #fbbf24;
+    border: 1px solid rgba(255,149,0,0.35);
+}
+.badge-severity-info {
+    background: rgba(90,103,216,0.15); color: var(--blue-l);
+    border: 1px solid rgba(90,103,216,0.35);
+}
+
+/* Alert device type icon */
+.alert-device-icon {
+    width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+}
+.alert-icon-temp       { background: rgba(239,68,68,0.15);   color: #ef4444;  border: 1px solid rgba(239,68,68,0.25); }
+.alert-icon-humid      { background: rgba(56,189,248,0.15);  color: #38bdf8;  border: 1px solid rgba(56,189,248,0.25); }
+.alert-icon-pressure   { background: rgba(167,139,250,0.15); color: #a78bfa;  border: 1px solid rgba(167,139,250,0.25); }
+.alert-icon-socket     { background: rgba(245,158,11,0.15);  color: #f59e0b;  border: 1px solid rgba(245,158,11,0.25); }
+.alert-icon-lamp       { background: rgba(253,224,71,0.15);  color: #ca8a04;  border: 1px solid rgba(253,224,71,0.3); }
+.alert-icon-controller { background: rgba(52,211,153,0.15);  color: #34d399;  border: 1px solid rgba(52,211,153,0.25); }
+.alert-icon-default    { background: rgba(129,140,248,0.15); color: #818cf8;  border: 1px solid rgba(129,140,248,0.25); }
+
+/* Alert badges column — centered */
+.alert-badges {
+    display: flex; flex-direction: column; align-items: center; gap: 5px; flex-shrink: 0;
+}
+.alert-badges .badge { min-width: 110px; text-align: center; }
 
 /* ── Alert rows (list page) ── */
 .alerts-list { display:flex; flex-direction:column; gap:var(--space-4); }
@@ -500,6 +536,7 @@ body {
 
 .alert-row--closed { background: rgba(52,199,89,0.05) !important; border-left-color: var(--success) !important; }
 .alert-row--closed .alert-message { color: var(--text-muted); }
+.alert-row--closed .alert-device  { opacity: 0.6; }
 
 /* ── Alert item (dashboard) ── */
 .alert-item {
@@ -552,7 +589,8 @@ body {
 .chart-legend-item { display: flex; align-items: center; gap: 7px; font-size: 11px; color: #94a3b8; white-space: nowrap; }
 .chart-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 @media (max-width: 700px) {
-    .chart-legend-custom { flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 5px; padding: 10px 4px 4px; }
+    .chart-legend-custom { flex-direction: column; align-items: center; justify-content: center; gap: 5px; padding: 10px 4px 4px; }
+    .chart-legend-item { width: 100%; justify-content: center; }
 }
 
 .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); }
@@ -849,11 +887,11 @@ body {
 .nav-drawer-logout i { color: var(--danger) !important; }
 .nav-drawer-logout:hover { background: rgba(239,68,68,0.08) !important; }
 
-@media (max-width: 700px) {
+@media (max-width: 1050px) {
     /* show hamburger, hide desktop menu */
     .nav-hamburger { display: flex; }
     .navbar-menu   { display: none; }
-    .navbar-container { height: 52px; }
+    .navbar-container { height: 52px; overflow: visible; }
 
     /* dashboard: legend names wrap properly */
     .chart-wrapper { padding: var(--space-4); }
@@ -889,9 +927,6 @@ body {
 
 /* ── Responsive ── */
 @media (max-width: 768px) {
-    .navbar-container { gap:var(--space-3); padding:0 var(--space-5); }
-    .navbar-menu      { gap:2px; flex-wrap: wrap; }
-    .nav-link         { font-size:13px; padding:5px 8px; }
     .container        { padding:0 var(--space-4); }
     .dashboard-stats  { grid-template-columns:1fr 1fr; }
     .stat-content h3  { font-size:22px; }
@@ -904,8 +939,6 @@ body {
 }
 @media (max-width: 480px) {
     .dashboard-stats  { grid-template-columns:1fr; }
-    .nav-link         { font-size:12px; padding:4px 6px; }
-    .navbar-container { height: auto; padding: 8px var(--space-4); flex-wrap: wrap; gap: 8px; }
     .stat-card        { padding: var(--space-4); }
     .stat-icon        { width: 40px; height: 40px; font-size: 18px; }
 }

@@ -434,6 +434,12 @@ function toggleAccordion(id) {
 
     body.style.display = isOpen ? 'none' : 'block';
     if (icon) icon.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+
+    // Scroll to header when opening
+    if (!isOpen) {
+        const header = body.previousElementSibling;
+        if (header) setTimeout(() => header.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    }
 }
 
 function toggleDevice(deviceId, btn) {

@@ -64,6 +64,7 @@
         }
         #hero-canvas {
             position: absolute; inset: 0; width: 100%; height: 100%;
+            pointer-events: none;
         }
         .hero-glow {
             position: absolute;
@@ -140,11 +141,11 @@
 
         /* scroll indicator */
         .scroll-hint {
-            position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
+            position: absolute; bottom: 40px; left: 0; right: 0;
             display: flex; flex-direction: column; align-items: center; gap: 8px;
             color: var(--muted); font-size: 0.75rem; letter-spacing: 0.08em;
             opacity: 0; animation: fadeUp 1s ease 1.5s forwards;
-            z-index: 2;
+            z-index: 2; pointer-events: none;
         }
         .scroll-mouse {
             width: 22px; height: 34px; border: 2px solid rgba(255,255,255,0.2);
@@ -153,6 +154,24 @@
         .scroll-wheel {
             width: 3px; height: 7px; background: rgba(255,255,255,0.5);
             border-radius: 2px; animation: scrollWheel 2s ease-in-out infinite;
+        }
+        /* mobile: finger swipe instead of mouse */
+        .scroll-finger {
+            display: none;
+            font-size: 28px; line-height: 1;
+            animation: fingerSwipe 2.2s ease-in-out infinite;
+            filter: grayscale(1) brightness(10) opacity(0.35);
+        }
+        @keyframes fingerSwipe {
+            0%   { transform: translateY(6px);  opacity: 0.5; }
+            30%  { transform: translateY(0);    opacity: 1;   }
+            60%  { transform: translateY(-8px); opacity: 1;   }
+            80%  { transform: translateY(-8px); opacity: 0.4; }
+            100% { transform: translateY(6px);  opacity: 0.5; }
+        }
+        @media (max-width: 700px) {
+            .scroll-mouse  { display: none; }
+            .scroll-finger { display: block; }
         }
 
         /* ─── CINEMATIC TRANSITION TEXT (pinned scroll reveal) ─── */
@@ -195,24 +214,32 @@
         .stat-l { font-size: 0.72rem; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600; }
 
         /* ─── HORIZONTAL SCROLL FEATURES ─── */
-        .hscroll-pin { position: relative; height: 280vh; }
+        .hscroll-pin { position: relative; height: auto; }
         .hscroll-sticky {
-            position: sticky; top: 0; height: 100vh;
+            position: static;
+            height: auto;
             display: flex; flex-direction: column; justify-content: center;
-            overflow: hidden; background: var(--dark3);
+            overflow: visible; background: var(--dark3);
             border-top: 1px solid var(--border);
+            padding: 80px 0 60px;
         }
         .hscroll-header {
             text-align: center; padding: 0 40px; margin-bottom: 48px; flex-shrink: 0;
         }
         .section-tag { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--blue-l); display: block; margin-bottom: 12px; }
         .section-title { font-size: clamp(1.6rem, 3.5vw, 2.4rem); font-weight: 900; letter-spacing: -0.04em; }
-        .hscroll-track-wrap { overflow: hidden; flex-shrink: 0; }
+        .hscroll-track-wrap {
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            padding: 0 0 16px;
+        }
+        .hscroll-track-wrap::-webkit-scrollbar { display: none; }
         .hscroll-track {
             display: flex; gap: 24px;
-            padding: 0 calc(50vw - 160px);
-            will-change: transform;
-            transition: none;
+            padding: 0 40px;
+            width: max-content;
         }
         .hcard {
             flex-shrink: 0;
@@ -239,7 +266,8 @@
         .hcard p { color: var(--muted); font-size: 0.88rem; line-height: 1.65; }
         /* progress dots */
         .hscroll-dots { display: flex; justify-content: center; gap: 8px; margin-top: 32px; }
-        .hdot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.15); transition: all 0.3s; }
+        .hdot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.15); transition: all 0.3s; cursor: pointer; }
+        .hdot:hover { background: rgba(129,140,248,0.6); transform: scale(1.3); }
         .hdot.active { background: var(--blue-l); transform: scale(1.4); }
 
         /* ─── ABOUT (blur reveal) ─── */
@@ -310,11 +338,17 @@
 
         @media (max-width:768px) {
             .navbar { padding: 0 20px; }
-            .about-inner { grid-template-columns: 1fr; gap: 48px; }
-            .hcard { width: 260px; }
             .hero-title { font-size: clamp(2.4rem, 9vw, 4rem); }
             .stats { flex-wrap: wrap; }
             .stat { border-right: none; max-width: none; padding: 12px 24px; }
+
+            /* about: center on mobile */
+            .about-inner { grid-template-columns: 1fr; gap: 48px; }
+            .about-left { text-align: center; }
+            .about-left .section-tag { text-align: center; }
+
+            .hcard { width: 260px; }
+            .hscroll-sticky { padding: 60px 0 40px; }
         }
     </style>
 </head>
@@ -360,6 +394,7 @@
 
         <div class="scroll-hint">
             <div class="scroll-mouse"><div class="scroll-wheel"></div></div>
+            <div class="scroll-finger">👆</div>
             <span>Прокрутите</span>
         </div>
     </div>
@@ -370,7 +405,7 @@
     <div class="stat"><div class="stat-n" data-target="25">0</div><div class="stat-l">Устройств</div></div>
     <div class="stat"><div class="stat-n" data-target="30">0</div><div class="stat-l">Дней телеметрии</div></div>
     <div class="stat"><div class="stat-n" data-target="6">0</div><div class="stat-l">Типов устройств</div></div>
-    <div class="stat"><div class="stat-n" data-target="99">0</div><div class="stat-l">% доступность</div></div>
+    <div class="stat"><div class="stat-n" data-target="99">0</div><div class="stat-l">доступность</div></div>
 </div>
 
 <!-- HORIZONTAL SCROLL FEATURES -->
@@ -474,8 +509,9 @@ window.addEventListener('scroll', () => navbar.classList.toggle('solid', scrollY
             for(let cc=0;cc<=Math.ceil(W/SP)+1;cc++)
                 dots.push({x:cc*SP, y:r*SP, o:0.12+Math.random()*0.18});
     }
-    c.addEventListener('mousemove',e=>{const r=c.getBoundingClientRect();mouse.x=e.clientX-r.left;mouse.y=e.clientY-r.top;});
-    c.addEventListener('mouseleave',()=>{mouse.x=-9999;mouse.y=-9999;});
+    const heroSticky = c.parentElement;
+    heroSticky.addEventListener('mousemove',e=>{const r=c.getBoundingClientRect();mouse.x=e.clientX-r.left;mouse.y=e.clientY-r.top;});
+    heroSticky.addEventListener('mouseleave',()=>{mouse.x=-9999;mouse.y=-9999;});
     let t=0;
     function draw(){
         ctx.clearRect(0,0,W,H); t+=0.007;
@@ -514,8 +550,9 @@ setTimeout(()=>{
 
         // fade out main content after 15% scroll
         const mainOpacity = prog < 0.1 ? 1 : Math.max(0, 1-(prog-0.1)/0.1);
-        main.style.opacity  = mainOpacity;
-        main.style.transform= `translateY(${prog*-40}px)`;
+        main.style.opacity      = mainOpacity;
+        main.style.transform    = `translateY(${prog*-40}px)`;
+        main.style.pointerEvents= mainOpacity < 0.05 ? 'none' : 'auto';
 
         // show phrases at 25%, 50%, 75%
         const thresholds = [0.2, 0.48, 0.72];
@@ -538,29 +575,39 @@ setTimeout(()=>{
 
 // ── horizontal scroll features ──
 (function(){
-    const pin   = document.getElementById('hscroll-pin');
     const track = document.getElementById('hscroll-track');
     const cards = track.querySelectorAll('.hcard');
     const dots  = document.getElementById('hscroll-dots').querySelectorAll('.hdot');
-    const cardW = 300 + 24; // width + gap
+    const wrap  = document.querySelector('.hscroll-track-wrap');
 
-    function update(){
-        const rect  = pin.getBoundingClientRect();
-        const total = pin.offsetHeight - window.innerHeight;
-        const prog  = Math.max(0, Math.min(1, -rect.top / total));
-
-        // total scrollable width = all cards except visible center one
-        const maxShift = (cards.length - 1) * cardW;
-        const shift    = prog * maxShift;
-        track.style.transform = `translateX(${-shift}px)`;
-
-        // active card = which card is closest to center
-        const activeIdx = Math.round(shift / cardW);
-        cards.forEach((c,i)=> c.classList.toggle('active', i===activeIdx));
-        dots.forEach((d,i) => d.classList.toggle('active', i===activeIdx));
+    function setActive(idx) {
+        cards.forEach((c,i) => c.classList.toggle('active', i===idx));
+        dots.forEach((d,i)  => d.classList.toggle('active', i===idx));
     }
-    window.addEventListener('scroll', update, {passive:true});
-    update();
+
+    function getActiveIdx() {
+        // if scrolled to end — last card
+        if (wrap.scrollLeft + wrap.clientWidth >= wrap.scrollWidth - 4) {
+            return cards.length - 1;
+        }
+        const cardW = window.innerWidth <= 768 ? 260 + 24 : 300 + 24;
+        return Math.min(cards.length - 1, Math.round(wrap.scrollLeft / cardW));
+    }
+
+    if (wrap) {
+        wrap.addEventListener('scroll', () => setActive(getActiveIdx()), {passive:true});
+
+        // click dot → scroll to that card
+        dots.forEach((dot, i) => {
+            dot.addEventListener('click', () => {
+                const cardW = window.innerWidth <= 768 ? 260 + 24 : 300 + 24;
+                const padding = 40;
+                wrap.scrollTo({ left: i * cardW, behavior: 'smooth' });
+            });
+        });
+    }
+
+    setActive(0);
 })();
 
 // ── blur-reveal IntersectionObserver ──
@@ -585,12 +632,17 @@ const counterObs = new IntersectionObserver(entries=>{
     entries.forEach(e=>{
         if(e.isIntersecting){
             e.target.querySelectorAll('.stat-n[data-target]').forEach(el=>{
-                const target=+el.dataset.target, suffix=target===99?'%':'+';
+                const target=+el.dataset.target, suffix=target===99?'% доступность':'+';
                 let start=0, dur=1400, step=16;
                 const inc=target/Math.floor(dur/step);
+                const statL = el.parentElement.querySelector('.stat-l');
                 const timer=setInterval(()=>{
                     start=Math.min(start+inc, target);
-                    el.textContent=Math.floor(start)+(start>=target?suffix:'');
+                    if(target===99){
+                        el.textContent=Math.floor(start)+(start>=target?'%':'');
+                    } else {
+                        el.textContent=Math.floor(start)+(start>=target?'+':'');
+                    }
                     if(start>=target) clearInterval(timer);
                 },step);
             });

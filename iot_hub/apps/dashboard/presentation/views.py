@@ -29,12 +29,8 @@ def dashboard(request):
     except:
         is_admin = False
     
-    if is_admin:
-        devices_qs = Device.objects.all()
-        alerts_qs = Alert.objects.all()
-    else:
-        devices_qs = Device.objects.filter(owner=user)
-        alerts_qs = Alert.objects.filter(device__owner=user)
+    devices_qs = Device.objects.filter(owner=user)
+    alerts_qs = Alert.objects.filter(device__owner=user)
     
     # Оптимизировано: все статистики в одном query через annotations
     from django.db.models import Count as CountFunc, Q as QFunc
@@ -88,14 +84,11 @@ def dashboard(request):
             metrics__is_active=True
         ).prefetch_related('telemetry')
         
-        if is_admin:
-            pass  # уже все
-        else:
-            devices_with_metric = devices_with_metric.filter(owner=user)
-        
+        devices_with_metric = devices_with_metric.filter(owner=user)
+
         chart_devices = []
-        
-        for device in devices_with_metric[:6]:  # Макс 6 линий на графике
+
+        for device in devices_with_metric[:10]:
             # Получаем последние 30 дней данных
             telemetry_data = Telemetry.objects.filter(
                 device=device,

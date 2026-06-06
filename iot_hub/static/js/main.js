@@ -1,6 +1,22 @@
 // Main JavaScript functionality
 
-// Функции для управления устройствами
+const DEVICE_TYPE_ICONS = {
+    'датчик температуры': { icon: 'fa-thermometer-half', color: '#ef4444', bg: 'rgba(239,68,68,0.15)', border: 'rgba(239,68,68,0.3)' },
+    'датчик влажности':   { icon: 'fa-tint',             color: '#38bdf8', bg: 'rgba(56,189,248,0.15)', border: 'rgba(56,189,248,0.3)' },
+    'датчик давления':    { icon: 'fa-tachometer-alt',   color: '#a78bfa', bg: 'rgba(167,139,250,0.15)', border: 'rgba(167,139,250,0.3)' },
+    'умная розетка':      { icon: 'fa-plug',             color: '#f59e0b', bg: 'rgba(245,158,11,0.15)', border: 'rgba(245,158,11,0.3)' },
+    'led лампа':          { icon: 'fa-lightbulb',        color: '#fde047', bg: 'rgba(253,224,71,0.15)',  border: 'rgba(253,224,71,0.3)' },
+    'контроллер':         { icon: 'fa-microchip',        color: '#34d399', bg: 'rgba(52,211,153,0.15)', border: 'rgba(52,211,153,0.3)' },
+};
+
+function getDeviceTypeStyle(typeName) {
+    const key = (typeName || '').toLowerCase();
+    for (const [k, v] of Object.entries(DEVICE_TYPE_ICONS)) {
+        if (key.includes(k)) return v;
+    }
+    return { icon: 'fa-microchip', color: '#818cf8', bg: 'rgba(90,103,216,0.15)', border: 'rgba(90,103,216,0.25)' };
+}
+
 const METRIC_ICONS = {
     temperature: 'fa-thermometer-half',
     humidity:    'fa-tint',
@@ -30,10 +46,11 @@ function viewDeviceMetrics(deviceId, deviceName) {
         const el = document.getElementById('metrics-content');
 
         // Device info header
+        const dts = getDeviceTypeStyle(data.device_type_name);
         let html = `
         <div style="display:flex;align-items:center;gap:14px;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--bg-4);">
-            <div style="width:48px;height:48px;border-radius:14px;background:rgba(90,103,216,0.15);border:1px solid rgba(90,103,216,0.25);display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:#818cf8;flex-shrink:0;">
-                <i class="fas fa-microchip"></i>
+            <div style="width:48px;height:48px;border-radius:14px;background:${dts.bg};border:1px solid ${dts.border};display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:${dts.color};flex-shrink:0;">
+                <i class="fas ${dts.icon}"></i>
             </div>
             <div>
                 <div style="font-weight:700;font-size:15px;color:var(--text);">${data.name || deviceName}</div>
@@ -503,12 +520,13 @@ $(document).ready(function() {
         
         const formData = {
             name: $('#edit-device-name').val(),
+            serial_number: $('#edit-device-serial').val(),
             device_type: deviceTypeInt,
             status: $('#edit-device-status').val(),
             location_name: $('#edit-device-location').val(),
             description: $('#edit-device-description').val()
         };
-        
+
         // PUT request for update
         fetch(`/api/devices/devices/${deviceId}/`, {
             method: 'PUT',
