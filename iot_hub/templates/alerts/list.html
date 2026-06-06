@@ -46,6 +46,7 @@
             <span class="stat"><i class="fas fa-circle" style="color:var(--apple-blue);font-size:9px;"></i> Новых: <strong id="count-new">{{ new_count }}</strong></span>
             <span class="stat"><i class="fas fa-circle" style="color:var(--apple-warning);font-size:9px;"></i> Подтверждено: <strong id="count-acknowledged">{{ acknowledged_count }}</strong></span>
             <span class="stat"><i class="fas fa-circle" style="color:var(--apple-success);font-size:9px;"></i> Разрешено: <strong id="count-resolved">{{ resolved_count }}</strong></span>
+            <span class="stat"><i class="fas fa-circle" style="color:var(--text-muted);font-size:9px;"></i> Закрыто: <strong id="count-closed">{{ closed_count }}</strong></span>
         </div>
     </div>
 
@@ -170,7 +171,7 @@ function alertAction(alertId, action) {
 
         // Обновляем счётчики сверху
         const oldStatus = row.dataset.status;
-        const countMap = { 'new': 'count-new', 'acknowledged': 'count-acknowledged', 'resolved': 'count-resolved' };
+        const countMap = { 'new': 'count-new', 'acknowledged': 'count-acknowledged', 'resolved': 'count-resolved', 'closed': 'count-closed' };
         if (countMap[oldStatus]) {
             const el = document.getElementById(countMap[oldStatus]);
             if (el) el.textContent = Math.max(0, parseInt(el.textContent) - 1);

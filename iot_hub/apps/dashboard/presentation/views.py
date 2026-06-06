@@ -202,6 +202,7 @@ def alerts_list(request):
         'new_count': alerts.filter(status='new').count(),
         'acknowledged_count': alerts.filter(status='acknowledged').count(),
         'resolved_count': alerts.filter(status='resolved').count(),
+        'closed_count': alerts.filter(status='closed').count(),
     }
     return render(request, 'alerts/list.html', context)
 

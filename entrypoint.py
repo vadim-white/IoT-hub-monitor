@@ -133,20 +133,20 @@ def main():
         "Seeding demo alerts"
     )
 
-    # Refresh last_seen_at for all devices so "Никогда" doesn't show
+    # Refresh last_seen_at for ALL devices on every deploy so time stays fresh
     try:
         import random
         from django.utils import timezone
         from datetime import timedelta
         from iot_hub.apps.devices.models import Device
-        devices = list(Device.objects.filter(last_seen_at__isnull=True))
+        devices = list(Device.objects.all())
         for device in devices:
             device.last_seen_at = timezone.now() - timedelta(minutes=random.randint(1, 60))
         if devices:
             Device.objects.bulk_update(devices, ['last_seen_at'])
             logger.info(f"✅ Обновлено last_seen_at для {len(devices)} устройств")
         else:
-            logger.info("✅ last_seen_at уже установлен у всех устройств")
+            logger.info("✅ Нет устройств для обновления last_seen_at")
     except Exception as e:
         logger.warning(f"Could not refresh last_seen_at: {e}")
 
