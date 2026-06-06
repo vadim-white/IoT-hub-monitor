@@ -254,7 +254,7 @@
             <h3>Метрики устройства: <span id="device-name-title"></span></h3>
             <span class="close" data-dismiss="modal">&times;</span>
         </div>
-        <div id="metrics-content" style="padding: 20px;"></div>
+        <div id="metrics-content" style="overflow: hidden;"></div>
         <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-dismiss="modal">Закрыть</button>
         </div>
@@ -359,9 +359,21 @@
         text-transform: uppercase;
         letter-spacing: 0.05em;
         color: var(--text-muted);
-        width: 140px;
-        min-width: 140px;
+        width: 110px;
+        min-width: 110px;
         flex-shrink: 0;
+    }
+    /* toggle compact on mobile */
+    .device-toggle {
+        width: 96px !important;
+        font-size: 11px !important;
+    }
+    .device-toggle__thumb {
+        width: 20px !important;
+        height: 20px !important;
+    }
+    .device-toggle--on .device-toggle__thumb {
+        transform: translateX(70px) !important;
     }
     .table td[data-label="Название"] {
         font-size: 14px !important;
@@ -380,59 +392,10 @@
     }
     .table td[data-label="Действия"]::before { display: none; }
 
-    /* toggle fits narrow screen */
-    .device-toggle { width: 106px !important; }
-    .device-toggle--on .device-toggle__thumb { transform: translateX(78px) !important; }
-
     /* accordion header compact */
     .accordion-header { padding: 12px 14px !important; }
 }
 
-.device-toggle {
-    display: inline-flex;
-    align-items: center;
-    background: #d1d5db;
-    border: none;
-    border-radius: 20px;
-    padding: 3px 3px;
-    cursor: pointer;
-    transition: background 0.3s ease;
-    font-size: 12px;
-    font-weight: 600;
-    color: #666;
-    width: 110px;
-    outline: none;
-    position: relative;
-    user-select: none;
-}
-.device-toggle:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-.device-toggle--on {
-    background: #34c759;
-    color: #fff;
-}
-.device-toggle__thumb {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: var(--text);
-    box-shadow: 0 2px 4px rgba(0,0,0,.2);
-    flex-shrink: 0;
-    transition: transform 0.3s cubic-bezier(.4,0,.2,1);
-    transform: translateX(0);
-}
-.device-toggle--on .device-toggle__thumb {
-    transform: translateX(82px);
-}
-.device-toggle__label {
-    position: absolute;
-    width: 100%;
-    text-align: center;
-    pointer-events: none;
-    transition: opacity 0.2s;
-}
 </style>
 
 <script>
@@ -440,6 +403,16 @@ function toggleAccordion(id) {
     const body = document.getElementById(id);
     const icon = document.getElementById('icon-' + id);
     const isOpen = body.style.display !== 'none';
+
+    // Close all open accordions first
+    document.querySelectorAll('[id^="user-"], #my-devices').forEach(el => {
+        if (el.id !== id) {
+            el.style.display = 'none';
+            const ic = document.getElementById('icon-' + el.id);
+            if (ic) ic.style.transform = 'rotate(0deg)';
+        }
+    });
+
     body.style.display = isOpen ? 'none' : 'block';
     if (icon) icon.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
 }
