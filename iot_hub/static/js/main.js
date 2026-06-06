@@ -1,40 +1,81 @@
 // Main JavaScript functionality
 
 // Функции для управления устройствами
+const METRIC_ICONS = {
+    temperature: 'fa-thermometer-half',
+    humidity:    'fa-tint',
+    pressure:    'fa-tachometer-alt',
+    power:       'fa-bolt',
+    voltage:     'fa-plug',
+    current:     'fa-water',
+    brightness:  'fa-sun',
+    color_temp:  'fa-palette',
+    rssi:        'fa-wifi',
+    status:      'fa-circle',
+};
+
 function viewDeviceMetrics(deviceId, deviceName) {
     document.getElementById('device-name-title').textContent = deviceName;
-    document.getElementById('metrics-content').innerHTML = '<p>Загрузка метрик...</p>';
+    document.getElementById('metrics-content').innerHTML = `
+        <div style="text-align:center;padding:24px;color:var(--text-muted);">
+            <i class="fas fa-spinner fa-spin" style="font-size:24px;"></i>
+        </div>`;
     openModal('metricsModal');
-    
-    // Загрузить метрики
+
     fetch(`/api/devices/devices/${deviceId}/`, {
-        method: 'GET',
         headers: {'Content-Type': 'application/json'}
     })
     .then(r => r.json())
     .then(data => {
-        if (data.metrics && data.metrics.length > 0) {
-            let html = '<table class="table"><thead><tr><th>Тип</th><th>Название</th><th>Единица</th><th>Диапазон</th></tr></thead><tbody>';
-            data.metrics.forEach(m => {
-                const range = m.min_value && m.max_value ? `${m.min_value} - ${m.max_value}` : 'Не установлены';
-                html += `
-                    <tr>
-                        <td>${m.metric_type}</td>
-                        <td>${m.name}</td>
-                        <td>${m.unit || '-'}</td>
-                        <td>${range}</td>
-                    </tr>
-                `;
-            });
-            html += '</tbody></table>';
-            document.getElementById('metrics-content').innerHTML = html;
-        } else {
-            document.getElementById('metrics-content').innerHTML = '<p style="text-align: center; color: #999;">Нет метрик для этого устройства</p>';
+        const el = document.getElementById('metrics-content');
+
+        // Device info header
+        let html = `
+        <div style="display:flex;align-items:center;gap:14px;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--bg-4);">
+            <div style="width:48px;height:48px;border-radius:14px;background:rgba(90,103,216,0.15);border:1px solid rgba(90,103,216,0.25);display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:#818cf8;flex-shrink:0;">
+                <i class="fas fa-microchip"></i>
+            </div>
+            <div>
+                <div style="font-weight:700;font-size:15px;color:var(--text);">${data.name || deviceName}</div>
+                <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">
+                    ${data.device_type_name || ''} &nbsp;·&nbsp; ${data.serial_number || ''}
+                </div>
+                ${data.location_name ? `<div style="font-size:12px;color:var(--text-muted);margin-top:1px;"><i class="fas fa-map-marker-alt" style="font-size:10px;"></i> ${data.location_name}</div>` : ''}
+            </div>
+        </div>`;
+
+        if (data.description) {
+            html += `<div style="padding:12px 20px;font-size:13px;color:var(--text-muted);border-bottom:1px solid var(--border);line-height:1.5;">${data.description}</div>`;
         }
+
+        if (data.metrics && data.metrics.length > 0) {
+            html += `<div style="padding:12px 20px 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);">Метрики</div>`;
+            data.metrics.forEach(m => {
+                const icon = METRIC_ICONS[m.metric_type] || 'fa-chart-line';
+                const range = (m.min_value != null && m.max_value != null)
+                    ? `${m.min_value} – ${m.max_value} ${m.unit || ''}`
+                    : '—';
+                html += `
+                <div style="display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--border);">
+                    <div style="width:36px;height:36px;border-radius:10px;background:rgba(90,103,216,0.1);display:flex;align-items:center;justify-content:center;font-size:14px;color:#818cf8;flex-shrink:0;">
+                        <i class="fas ${icon}"></i>
+                    </div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:14px;font-weight:600;color:var(--text);">${m.name}</div>
+                        <div style="font-size:12px;color:var(--text-muted);margin-top:1px;">Диапазон: ${range}</div>
+                    </div>
+                    <div style="font-size:13px;font-weight:700;color:#818cf8;flex-shrink:0;">${m.unit || ''}</div>
+                </div>`;
+            });
+        } else {
+            html += `<div style="padding:32px;text-align:center;color:var(--text-muted);"><i class="fas fa-chart-line" style="font-size:28px;display:block;margin-bottom:10px;opacity:0.3;"></i>Нет метрик</div>`;
+        }
+
+        el.innerHTML = html;
     })
-    .catch(error => {
-        console.error('Error:', error);
-        document.getElementById('metrics-content').innerHTML = '<p style="color: red;">Ошибка загрузки метрик</p>';
+    .catch(() => {
+        document.getElementById('metrics-content').innerHTML =
+            '<p style="padding:20px;color:var(--danger);">Ошибка загрузки</p>';
     });
 }
 

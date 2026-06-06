@@ -224,8 +224,8 @@ body {
 }
 .stat-card:hover { box-shadow: var(--shadow-card); transform: translateY(-3px); border-color: var(--border-2); }
 .stat-card-link { text-decoration: none; cursor: pointer; }
-.stat-card-link .stat-content h3,
-.stat-card-link .stat-content p { color: inherit; }
+.stat-card-link .stat-content h3 { color: var(--text); }
+.stat-card-link .stat-content p  { color: var(--text-muted); }
 
 .stat-icon {
     width: 52px;
@@ -702,6 +702,11 @@ body {
     border-top: 1px solid var(--border);
     margin-top: auto;
 }
+
+/* ── Table: status cell centered, data column aligned ── */
+.table td { vertical-align: middle; }
+.table td[data-label="Статус"],
+.table th:nth-child(4) { text-align: center; }
 
 /* ── Device toggle (iOS-style) ── */
 .device-toggle {
