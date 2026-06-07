@@ -157,19 +157,53 @@ class FuzzingTester:
         self.log_test("Large Payload Register", passed, resp.status_code)
     
     def test_rbac(self):
-        """Test RBAC."""
-        self.print_category("RBAC")
-        
-        resp = self.client.post('/api/auth/users/login/',
-                               {'username': 'admin', 'password': 'admin'},
-                               content_type='application/json')
-        # 401 is ok if credentials are invalid, 200 if valid
-        passed = resp.status_code in [200, 400, 401]
-        self.log_test("Auth Login", passed, resp.status_code)
-        
+        """Test RBAC — role-based access control between admin and regular user."""
+        self.print_category("RBAC (Role-Based Access Control)")
+
+        # --- Unauthenticated: protected endpoints must reject ---
+        self.client.logout()
+        for endpoint in ['/api/devices/devices/', '/api/alerts/alerts/', '/api/telemetry/readings/']:
+            resp = self.client.get(endpoint)
+            passed = resp.status_code in [401, 403]
+            self.log_test(f"Unauthenticated access blocked: {endpoint}", passed, resp.status_code)
+
+        # --- Regular user (client role): login ---
+        self.client.login(username='testuser', password='testpass123')
+
+        resp = self.client.get('/api/devices/devices/')
+        passed = resp.status_code == 200
+        self.log_test("Client role: can read own devices list (200)", passed, resp.status_code)
+
         resp = self.client.get('/admin/')
-        passed = resp.status_code in [200, 302, 403, 404]
-        self.log_test("Admin Panel", passed, resp.status_code)
+        passed = resp.status_code in [302, 403]
+        self.log_test("Client role: admin panel denied (302/403)", passed, resp.status_code)
+
+        resp = self.client.delete('/api/devices/devices/')
+        passed = resp.status_code in [401, 403, 405]
+        self.log_test("Client role: bulk DELETE devices denied (401/403/405)", passed, resp.status_code)
+
+        resp = self.client.get('/api/audit/logs/')
+        passed = resp.status_code == 200
+        self.log_test("Client role: audit log own records only (200)", passed, resp.status_code)
+
+        self.client.logout()
+
+        # --- Admin user: login ---
+        self.client.login(username='admin', password='12345')
+
+        resp = self.client.get('/api/devices/devices/')
+        passed = resp.status_code == 200
+        self.log_test("Admin role: can read all devices (200)", passed, resp.status_code)
+
+        resp = self.client.get('/admin/')
+        passed = resp.status_code in [200, 302]
+        self.log_test("Admin role: admin panel accessible (200/302)", passed, resp.status_code)
+
+        resp = self.client.get('/api/audit/logs/')
+        passed = resp.status_code in [200, 403]
+        self.log_test("Admin role: audit log accessible (200)", passed, resp.status_code)
+
+        self.client.logout()
     
     def test_malformed_requests(self):
         """Test malformed requests."""

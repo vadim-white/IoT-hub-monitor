@@ -189,6 +189,7 @@ docker-compose exec -T web python run_fuzzing_tests.py
 - Command Injection
 - Null Byte Injection
 - Malformed requests
+- RBAC нарушений — разграничение доступа между ролями (admin / operator / client)
 
 Тесты запускаются автоматически в CI/CD pipeline.
 
