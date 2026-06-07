@@ -11,6 +11,7 @@ from django.conf.urls.static import static
 def get_urlpatterns():
     from iot_hub.apps.accounts.presentation import views as account_views
     from iot_hub.apps.dashboard.presentation import views as dashboard_views
+    from iot_hub.apps.telemetry.presentation import views as telemetry_views
     
     patterns = [
         path('admin/', admin.site.urls),
@@ -31,6 +32,7 @@ def get_urlpatterns():
         path('devices/<uuid:device_id>/', dashboard_views.device_detail, name='device_detail'),
         path('alerts/', dashboard_views.alerts_list, name='alerts_list'),
         path('telemetry/', dashboard_views.telemetry_view, name='telemetry'),
+        path('export/', telemetry_views.export_view, name='export'),
         path('profile/', account_views.profile_view, name='profile'),
     ]
     

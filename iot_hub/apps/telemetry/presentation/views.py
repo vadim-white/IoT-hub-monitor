@@ -1,7 +1,9 @@
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
+from django.db.models import Min, Max, Count
 from datetime import timedelta
+import json
 from rest_framework import viewsets, status, filters, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -13,9 +15,73 @@ from iot_hub.apps.telemetry.presentation.serializers import (
     TelemetryCreateSerializer
 )
 from iot_hub.apps.devices.models import Device
+from iot_hub.apps.common.infrastructure.utils import export_telemetry_csv, export_telemetry_json
 
 
 # ====== WEB VIEWS ======
+
+@login_required(login_url='login')
+def export_view(request):
+    """Страница экспорта телеметрии."""
+    is_admin = hasattr(request.user, 'role') and request.user.role.is_admin
+    devices = Device.objects.all() if is_admin else Device.objects.filter(owner=request.user)
+    devices = devices.select_related('device_type').order_by('name')
+
+    # Диапазоны дат и количество записей по каждому устройству
+    ranges_qs = (
+        Telemetry.objects
+        .filter(device__in=devices)
+        .values('device_id')
+        .annotate(min_date=Min('recorded_at'), max_date=Max('recorded_at'), count=Count('id'))
+    )
+    device_ranges = {
+        str(r['device_id']): {
+            'min_date': r['min_date'].strftime('%Y-%m-%d') if r['min_date'] else None,
+            'max_date': r['max_date'].strftime('%Y-%m-%d') if r['max_date'] else None,
+            'count': r['count'],
+        }
+        for r in ranges_qs
+    }
+
+    today = timezone.now().date()
+    date_from_default = (today - timedelta(days=6)).isoformat()
+
+    if request.method == 'POST':
+        device_ids = request.POST.getlist('devices')
+        date_from = request.POST.get('date_from') or None
+        date_to = request.POST.get('date_to') or None
+        fmt = request.POST.get('format', 'csv')
+
+        # Не допускаем дату в будущем
+        if date_to and date_to > today.isoformat():
+            date_to = today.isoformat()
+
+        qs = Telemetry.objects.filter(device__in=devices).order_by('device', 'recorded_at')
+
+        if device_ids:
+            qs = qs.filter(device_id__in=device_ids)
+        if date_from:
+            qs = qs.filter(recorded_at__date__gte=date_from)
+        if date_to:
+            qs = qs.filter(recorded_at__date__lte=date_to)
+
+        meta = {
+            'period_from': date_from or '',
+            'period_to': date_to or today.isoformat(),
+        }
+
+        if fmt == 'json':
+            return export_telemetry_json(qs, filename='telemetry_export.json', meta=meta)
+        return export_telemetry_csv(qs, filename='telemetry_export.csv')
+
+    context = {
+        'devices': devices,
+        'device_ranges_json': json.dumps(device_ranges),
+        'today': today.isoformat(),
+        'date_from_default': date_from_default,
+    }
+    return render(request, 'telemetry/export.html', context)
+
 
 @login_required(login_url='login')
 def telemetry_view(request):
@@ -94,6 +160,29 @@ class TelemetryViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(telemetry, many=True)
         return Response(serializer.data)
     
+    @action(detail=False, methods=['get'])
+    def export(self, request):
+        """Экспорт телеметрии через API. Query params: devices, date_from, date_to, format."""
+        qs = self.get_queryset().order_by('device', 'recorded_at')
+
+        device_ids = request.query_params.getlist('devices')
+        date_from = request.query_params.get('date_from')
+        date_to = request.query_params.get('date_to')
+        fmt = request.query_params.get('format', 'csv')
+
+        if device_ids:
+            qs = qs.filter(device_id__in=device_ids)
+        if date_from:
+            qs = qs.filter(recorded_at__date__gte=date_from)
+        if date_to:
+            qs = qs.filter(recorded_at__date__lte=date_to)
+
+        meta = {'period_from': date_from or '', 'period_to': date_to or ''}
+
+        if fmt == 'json':
+            return export_telemetry_json(qs, filename='telemetry_export.json', meta=meta)
+        return export_telemetry_csv(qs, filename='telemetry_export.csv')
+
     @action(detail=False, methods=['post'])
     def ingest(self, request):
         """Приём данных телеметрии от IoT-устройств."""

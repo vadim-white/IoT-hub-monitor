@@ -24,5 +24,7 @@ db.sqlite3
 DOCUMENTATION.md
 setup.sh
 DESIGN.md
+CLAUDE.md
+PLAN_*.md
 RENDER_DEPLOYMENT.md
 DESIGN_2.md

@@ -25,6 +25,7 @@
                     <li><a href="{% url 'dashboard' %}" class="nav-link">Дашборд</a></li>
                     <li><a href="{% url 'devices_list' %}" class="nav-link">Устройства</a></li>
                     <li><a href="{% url 'alerts_list' %}" class="nav-link">Алерты</a></li>
+                    <li><a href="{% url 'export' %}" class="nav-link">Экспорт</a></li>
                     {% if user.role.is_admin %}
                     <li><a href="#" id="add-user-btn" class="nav-link" data-toggle="modal" data-target="#addUserModal">
                         <i class="fas fa-user-plus"></i> Добавить пользователя
@@ -62,6 +63,7 @@
                 <li><a href="{% url 'dashboard' %}" class="nav-drawer-link"><i class="fas fa-chart-bar"></i> Дашборд</a></li>
                 <li><a href="{% url 'devices_list' %}" class="nav-drawer-link"><i class="fas fa-microchip"></i> Устройства</a></li>
                 <li><a href="{% url 'alerts_list' %}" class="nav-drawer-link"><i class="fas fa-bell"></i> Алерты</a></li>
+                <li><a href="{% url 'export' %}" class="nav-drawer-link"><i class="fas fa-download"></i> Экспорт</a></li>
                 {% if user.role.is_admin %}
                 <li><a href="#" class="nav-drawer-link" id="add-user-drawer-btn"><i class="fas fa-user-plus"></i> Добавить пользователя</a></li>
                 {% endif %}

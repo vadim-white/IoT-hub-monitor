@@ -1,0 +1,376 @@
+{% extends "base.html" %}
+{% block title %}Экспорт телеметрии — IoT Hub Monitor{% endblock %}
+
+{% block extra_css %}
+<style>
+.export-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4, 16px);
+}
+@media (max-width: 768px) {
+    .export-grid { grid-template-columns: 1fr; }
+}
+
+.device-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 340px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+.device-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: var(--card-bg, #1c1c1e);
+    border: 1px solid var(--border-color, rgba(255,255,255,0.08));
+    cursor: pointer;
+    transition: border-color .15s;
+}
+.device-item:hover { border-color: var(--apple-blue, #5A67D8); }
+.device-item.has-no-data { opacity: .5; cursor: not-allowed; }
+.device-item input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; flex-shrink: 0; }
+.device-item.has-no-data input { cursor: not-allowed; }
+.device-info { flex: 1; min-width: 0; }
+.device-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.device-serial { font-size: 12px; color: var(--text-muted, #8e8e93); }
+.device-range { font-size: 12px; color: var(--text-muted, #8e8e93); white-space: nowrap; }
+.device-range.warn { color: var(--apple-warning, #FF9500); }
+.device-range.no-data { color: var(--text-muted, #8e8e93); font-style: italic; }
+
+@media (max-width: 480px) {
+    .device-range { display: none; }
+    .device-serial { white-space: normal; }
+    .device-list { max-height: 260px; }
+    .format-options { flex-direction: column; }
+}
+
+.select-all-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+.select-all-row button {
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color, rgba(255,255,255,0.12));
+    background: transparent;
+    color: var(--apple-blue, #5A67D8);
+    cursor: pointer;
+}
+.select-all-row button:hover { background: rgba(90,103,216,.12); }
+
+.preset-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+.preset-btn {
+    font-size: 12px;
+    padding: 4px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color, rgba(255,255,255,0.12));
+    background: transparent;
+    color: var(--apple-blue, #5A67D8);
+    cursor: pointer;
+}
+.preset-btn:hover { background: rgba(90,103,216,.12); }
+
+.format-options {
+    display: flex;
+    gap: 12px;
+}
+.format-card {
+    flex: 1;
+    padding: 14px 16px;
+    border-radius: 10px;
+    border: 2px solid var(--border-color, rgba(255,255,255,0.08));
+    cursor: pointer;
+    transition: border-color .15s;
+}
+.format-card:hover { border-color: var(--apple-blue, #5A67D8); }
+.format-card input[type="radio"] { display: none; }
+.format-card.selected { border-color: var(--apple-blue, #5A67D8); background: rgba(90,103,216,.08); }
+.format-title { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+.format-desc { font-size: 12px; color: var(--text-muted, #8e8e93); line-height: 1.4; }
+
+.warning-box {
+    display: none;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: rgba(255,149,0,.1);
+    border: 1px solid rgba(255,149,0,.3);
+    color: var(--apple-warning, #FF9500);
+    font-size: 13px;
+    line-height: 1.5;
+    margin-top: 12px;
+}
+.warning-box.visible { display: block; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1><i class="fas fa-download"></i> Экспорт телеметрии</h1>
+    </div>
+
+    <form method="post" id="export-form">
+        {% csrf_token %}
+
+        <div class="export-grid">
+
+            <!-- Левая колонка: устройства + период -->
+            <div style="display:flex;flex-direction:column;gap:var(--space-4,16px);">
+
+                <!-- Устройства -->
+                <div class="card">
+                    <div class="card-header"><h3><i class="fas fa-microchip"></i> Устройства</h3></div>
+                    <div class="card-body">
+                        <div class="select-all-row">
+                            <button type="button" id="btn-select-all">Выбрать все</button>
+                            <button type="button" id="btn-deselect-all">Снять все</button>
+                        </div>
+                        <div class="device-list" id="device-list">
+                            {% for device in devices %}
+                            {% with did=device.id|stringformat:"s" %}
+                            <label class="device-item {% if not device.id|stringformat:'s' in device_ranges_json %}{% endif %}"
+                                   id="device-label-{{ device.id }}"
+                                   data-device-id="{{ device.id }}">
+                                <input type="checkbox" name="devices" value="{{ device.id }}"
+                                       id="chk-{{ device.id }}"
+                                       class="device-checkbox">
+                                <div class="device-info">
+                                    <div class="device-name">{{ device.name }}</div>
+                                    <div class="device-serial">{{ device.serial_number }}{% if device.device_type %} · {{ device.device_type.name }}{% endif %}</div>
+                                </div>
+                                <div class="device-range" id="range-{{ device.id }}">
+                                    <i class="fas fa-spinner fa-spin" style="font-size:11px;"></i>
+                                </div>
+                            </label>
+                            {% endwith %}
+                            {% empty %}
+                            <p style="color:var(--text-muted);font-size:13px;">Нет доступных устройств.</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Период -->
+                <div class="card">
+                    <div class="card-header"><h3><i class="fas fa-calendar-alt"></i> Период</h3></div>
+                    <div class="card-body">
+                        <div class="preset-row">
+                            <button type="button" class="preset-btn" data-days="7">7 дней</button>
+                            <button type="button" class="preset-btn" data-days="30">30 дней</button>
+                            <button type="button" class="preset-btn" data-days="90">3 месяца</button>
+                            <button type="button" class="preset-btn" data-days="0">Все время</button>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                            <div class="form-group" style="margin:0;">
+                                <label for="date_from" style="font-size:12px;color:var(--text-muted);">С</label>
+                                <input type="date" name="date_from" id="date_from" class="form-control"
+                                       max="{{ today }}" value="{{ date_from_default }}">
+                            </div>
+                            <div class="form-group" style="margin:0;">
+                                <label for="date_to" style="font-size:12px;color:var(--text-muted);">По</label>
+                                <input type="date" name="date_to" id="date_to" class="form-control"
+                                       max="{{ today }}" value="{{ today }}">
+                            </div>
+                        </div>
+
+                        <div class="warning-box" id="warning-box">
+                            <i class="fas fa-exclamation-triangle"></i> <span id="warning-text"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Правая колонка: формат + кнопка -->
+            <div style="display:flex;flex-direction:column;gap:var(--space-4,16px);">
+
+                <!-- Формат -->
+                <div class="card">
+                    <div class="card-header"><h3><i class="fas fa-file-export"></i> Формат</h3></div>
+                    <div class="card-body">
+                        <div class="format-options">
+                            <label class="format-card selected" id="fmt-csv-card">
+                                <input type="radio" name="format" value="csv" checked>
+                                <div class="format-title"><i class="fas fa-table"></i> CSV</div>
+                                <div class="format-desc">Таблица для Excel, Google Sheets, pandas. Поля: Device Name, Serial Number, Device Type, Metric Name, Metric Type, Value, Unit, Status, Recorded At.</div>
+                            </label>
+                            <label class="format-card" id="fmt-json-card">
+                                <input type="radio" name="format" value="json">
+                                <div class="format-title"><i class="fas fa-code"></i> JSON</div>
+                                <div class="format-desc">Структурированный формат для API и скриптов. Содержит блок <code>export_meta</code> с метаданными и массив <code>data</code> с вложенными объектами устройства и метрики.</div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Итоговая инфо и кнопка -->
+                <div class="card">
+                    <div class="card-header"><h3><i class="fas fa-info-circle"></i> Итого</h3></div>
+                    <div class="card-body">
+                        <p style="font-size:13px;color:var(--text-muted);margin:0 0 16px;">
+                            Выбрано устройств: <strong id="selected-count">0</strong>
+                        </p>
+                        <button type="submit" class="btn btn-primary" id="btn-download" style="width:100%;gap:8px;" disabled>
+                            <i class="fas fa-download"></i> Скачать файл
+                        </button>
+                        <p style="font-size:11px;color:var(--text-muted);margin:10px 0 0;text-align:center;">
+                            Выберите хотя бы одно устройство
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const ranges = JSON.parse('{{ device_ranges_json|escapejs }}');
+    const today = '{{ today }}';
+
+    // ── Инициализация диапазонов дат в списке устройств ──
+    document.querySelectorAll('.device-checkbox').forEach(function (chk) {
+        const did = chk.closest('[data-device-id]').dataset.deviceId;
+        const rangeEl = document.getElementById('range-' + did);
+        const label = document.getElementById('device-label-' + did);
+        const r = ranges[did];
+
+        if (!r || r.count === 0) {
+            rangeEl.innerHTML = '<span class="no-data">нет данных</span>';
+            rangeEl.className = 'device-range no-data';
+            label.classList.add('has-no-data');
+            chk.disabled = true;
+        } else {
+            const daysDiff = Math.round((new Date(r.max_date) - new Date(r.min_date)) / 86400000);
+            const daysLabel = daysDiff < 1 ? 'сегодня' : daysDiff + ' дн.';
+            rangeEl.innerHTML = r.min_date + ' — ' + (r.max_date === today ? 'сегодня' : r.max_date) +
+                ' <span style="color:var(--text-muted);">(' + daysLabel + ')</span>';
+        }
+    });
+
+    // ── Выбор всех / снять все ──
+    document.getElementById('btn-select-all').addEventListener('click', function () {
+        document.querySelectorAll('.device-checkbox:not(:disabled)').forEach(function (c) { c.checked = true; });
+        updateUI();
+    });
+    document.getElementById('btn-deselect-all').addEventListener('click', function () {
+        document.querySelectorAll('.device-checkbox').forEach(function (c) { c.checked = false; });
+        updateUI();
+    });
+
+    // ── Пресеты периода ──
+    // Используем локальную дату (не toISOString — она в UTC и может съехать на день)
+    function localDateStr(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + day;
+    }
+
+    document.querySelectorAll('.preset-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const days = parseInt(btn.dataset.days);
+            const toDate = new Date();
+            document.getElementById('date_to').value = localDateStr(toDate);
+            if (days === 0) {
+                // Берём глобальный минимум по всем устройствам с данными
+                let globalMin = null;
+                Object.values(ranges).forEach(function (r) {
+                    if (r.min_date && (globalMin === null || r.min_date < globalMin)) {
+                        globalMin = r.min_date;
+                    }
+                });
+                document.getElementById('date_from').value = globalMin || '';
+            } else {
+                const from = new Date(toDate);
+                from.setDate(from.getDate() - days + 1);
+                document.getElementById('date_from').value = localDateStr(from);
+            }
+            updateWarning();
+        });
+    });
+
+    // ── Формат — переключение стиля карточки ──
+    document.querySelectorAll('input[name="format"]').forEach(function (radio) {
+        radio.addEventListener('change', function () {
+            document.getElementById('fmt-csv-card').classList.toggle('selected', document.querySelector('input[value="csv"]').checked);
+            document.getElementById('fmt-json-card').classList.toggle('selected', document.querySelector('input[value="json"]').checked);
+        });
+    });
+
+    // ── Обновление счётчика и кнопки ──
+    function updateUI() {
+        const count = document.querySelectorAll('.device-checkbox:checked').length;
+        document.getElementById('selected-count').textContent = count;
+        const btn = document.getElementById('btn-download');
+        const hint = btn.nextElementSibling;
+        btn.disabled = count === 0;
+        hint.style.display = count === 0 ? '' : 'none';
+        updateWarning();
+    }
+
+    // ── Предупреждение о нехватке данных ──
+    function updateWarning() {
+        const dateFrom = document.getElementById('date_from').value;
+        if (!dateFrom) { hideWarning(); return; }
+
+        const checkedIds = Array.from(document.querySelectorAll('.device-checkbox:checked'))
+            .map(function (c) { return c.closest('[data-device-id]').dataset.deviceId; });
+
+        const lacking = checkedIds.filter(function (did) {
+            const r = ranges[did];
+            return r && r.min_date && r.min_date > dateFrom;
+        });
+
+        if (lacking.length === 0) { hideWarning(); return; }
+
+        const lines = lacking.map(function (did) {
+            const label = document.getElementById('device-label-' + did);
+            const name = label ? label.querySelector('.device-name').textContent : did;
+            const r = ranges[did];
+            return '"' + name + '" — данные с ' + r.min_date + ' по ' + r.max_date;
+        });
+
+        document.getElementById('warning-text').innerHTML =
+            'Запрошенный период начинается раньше, чем есть данные у ' +
+            (lacking.length === 1 ? 'устройства' : 'устройств') + ':<br>' +
+            lines.join('<br>') +
+            '<br>Будет выгружено то, что есть.';
+        document.getElementById('warning-box').classList.add('visible');
+    }
+
+    function hideWarning() {
+        document.getElementById('warning-box').classList.remove('visible');
+    }
+
+    // ── Вешаем обработчики ──
+    document.querySelectorAll('.device-checkbox').forEach(function (c) {
+        c.addEventListener('change', updateUI);
+    });
+    // Запрет будущих дат при ручном вводе
+    function clampToToday(inputEl) {
+        if (inputEl.value && inputEl.value > today) {
+            inputEl.value = today;
+        }
+    }
+    document.getElementById('date_from').addEventListener('change', function () { clampToToday(this); updateWarning(); });
+    document.getElementById('date_to').addEventListener('change', function () { clampToToday(this); updateWarning(); });
+
+    updateUI();
+})();
+</script>
+{% endblock %}

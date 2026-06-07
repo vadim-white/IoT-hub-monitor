@@ -127,6 +127,12 @@ def main():
         "Loading telemetry data"
     )
 
+    # Shift telemetry dates so the latest record is always today
+    run_command(
+        "python shift_telemetry_dates.py",
+        "Shifting telemetry dates to today"
+    )
+
     # Seed demo alerts (always reset to keep data fresh)
     run_command(
         "python seed_alerts.py --reset",
