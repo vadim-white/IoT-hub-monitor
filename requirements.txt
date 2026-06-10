@@ -16,3 +16,4 @@ whitenoise==6.6.0
 cryptography==41.0.7
 daphne==4.0.0
 pandas==2.2.0
+numpy==1.26.3
