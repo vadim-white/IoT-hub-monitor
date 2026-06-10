@@ -446,7 +446,11 @@ def load_telemetry_for_devices(df, serial_numbers, period_offset_days=0):
 def load_telemetry_data():
     """Загружает телеметрию для всех устройств из CSV."""
 
-    csv_file = 'energydata_complete.csv'
+    csv_file = 'datasets/energydata_complete.csv'
+    if not os.path.exists(csv_file):
+        # Фолбэк на старый путь (корень), если датасет ещё не перенесён
+        if os.path.exists('energydata_complete.csv'):
+            csv_file = 'energydata_complete.csv'
     if not os.path.exists(csv_file):
         print(f"⚠️  Файл {csv_file} не найден, пропускаю загрузку телеметрии")
         return False

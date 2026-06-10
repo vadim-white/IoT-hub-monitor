@@ -1,0 +1,16 @@
+{
+  "metric_type": "humidity",
+  "unit": "%",
+  "source": "energydata_RH1",
+  "base_mean": 40.2597,
+  "base_std": 3.9792,
+  "ar1_coef": 0.9924,
+  "min_clip": 27.0233,
+  "max_clip": 63.36,
+  "leads": null,
+  "daily": {
+    "amplitude": 2.256334751319244,
+    "peak_hour": 19,
+    "trough_hour": 15
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "metric_type": "temperature",
+  "unit": "°C",
+  "source": "energydata_T1",
+  "base_mean": 21.6866,
+  "base_std": 1.606,
+  "ar1_coef": 0.9994,
+  "min_clip": 16.79,
+  "max_clip": 26.26,
+  "leads": "temperature_outdoor",
+  "daily": {
+    "amplitude": 1.327920721816703,
+    "peak_hour": 21,
+    "trough_hour": 8
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "metric_type": "voltage",
+  "unit": "V",
+  "source": "household_voltage",
+  "base_mean": 240.8391,
+  "base_std": 3.2388,
+  "ar1_coef": 0.9315,
+  "min_clip": 223.2,
+  "max_clip": 253.51,
+  "leads": null,
+  "daily": {
+    "amplitude": 4.336349972603699,
+    "peak_hour": 23,
+    "trough_hour": 19
+  },
+  "seasonal": {
+    "period": "year",
+    "min_month": 5,
+    "max_month": 12,
+    "amplitude": 3.7356970730940304,
+    "by_month": {
+      "1": 242.18,
+      "2": 241.47,
+      "3": 241.53,
+      "4": 241.05,
+      "5": 239.01,
+      "6": 239.91,
+      "7": 240.0,
+      "8": 240.17,
+      "9": 240.45,
+      "10": 240.77,
+      "11": 241.03,
+      "12": 242.75
+    }
+  }
+}

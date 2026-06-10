@@ -45,6 +45,9 @@ IoT-hub-monitor/
 ├── requirements.txt        # Зависимости Python
 ├── manage.py               # Точка входа Django
 ├── run_fuzzing_tests.py    # Fuzzing тесты безопасности
+├── datasets/               # Реальные датасеты для калибровки (gitignore, кроме energydata)
+├── tools/                  # Утилиты: extract_profiles.py (профили метрик из датасетов)
+├── docs/                   # Внутренняя документация (gitignore)
 ├── iot_hub/
 │   ├── apps/
 │   │   ├── accounts/       # Аутентификация и профили пользователей
@@ -118,6 +121,30 @@ IoT-hub-monitor/
 | **JSON** | Сгруппировано по `device_id`: метаданные экспорта + объект устройства со списком `readings` |
 
 > CSV сохраняется в UTF-8 с BOM — корректно открывается в Excel на Mac и Windows.
+
+---
+
+## 📚 Датасеты
+
+Для калибровки генератора синтетической телеметрии и ML-экспериментов (обнаружение
+аномалий, предиктивные алерты) используются реальные открытые датасеты. Они лежат
+в папке `datasets/` (в `.gitignore`, кроме `energydata_complete.csv` — он нужен для
+демо-данных при первом запуске). Из них извлекаются статистические профили метрик
+(`tools/extract_profiles.py` → `iot_hub/apps/telemetry/profiles/*.json`).
+
+| Датасет | Назначение | Метрики | Источник |
+|---------|------------|---------|----------|
+| **energydata_complete** (UCI Appliances Energy) | Демо-телеметрия + профили комнатных датчиков | temperature, humidity, power | [UCI #374](https://archive.ics.uci.edu/dataset/374/) |
+| **Погода РФ** (Москва: Балчуг, ВДНХ, 2025) | Профиль уличного датчика, климат РФ | temperature, humidity | [rp5.ru](https://rp5.ru) — «Расписание Погоды» |
+| **Household Power Consumption** | Профили электрики | voltage, current, power | [UCI #235](https://archive.ics.uci.edu/dataset/235/) |
+| **AI4I 2020 Predictive Maintenance** | Метки отказов для гибридного rule+ML алертинга | температура, момент, износ | [UCI #601](https://archive.ics.uci.edu/dataset/601/) |
+| **NASA C-MAPSS** | Деградация до отказа (RUL) для предиктивных алертов | сенсоры турбин | [NASA PCoE](https://www.nasa.gov/intelligent-systems-division/discovery-and-systems-health/pcoe/pcoe-data-set-repository/) |
+| **Numenta NAB** | Бенчмарк аномалий (размеченные окна) для сравнения ML-методов | time-series | [github.com/numenta/NAB](https://github.com/numenta/NAB) |
+
+> Данные погоды предоставлены сайтом **«Расписание Погоды», [rp5.ru](https://rp5.ru)** —
+> при использовании этих данных просьба указывать названный сайт.
+
+Подробный анализ датасетов и дизайн симулятора — во внутренней документации (`docs/simulator/`).
 
 ---
 

@@ -1,0 +1,36 @@
+{
+  "metric_type": "humidity",
+  "unit": "%",
+  "source": "rp5_moscow_2025",
+  "base_mean": 66.3896,
+  "base_std": 18.7856,
+  "ar1_coef": 0.8917,
+  "min_clip": 12.0,
+  "max_clip": 94.0,
+  "leads": null,
+  "daily": {
+    "amplitude": 16.677595628415304,
+    "peak_hour": 6,
+    "trough_hour": 15
+  },
+  "seasonal": {
+    "period": "year",
+    "min_month": 5,
+    "max_month": 12,
+    "amplitude": 30.076612903225815,
+    "by_month": {
+      "1": 77.75,
+      "2": 68.31,
+      "3": 61.83,
+      "4": 53.11,
+      "5": 51.73,
+      "6": 57.93,
+      "7": 57.07,
+      "8": 65.41,
+      "9": 62.55,
+      "10": 78.19,
+      "11": 80.46,
+      "12": 81.81
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "metric_type": "power",
+  "unit": "Wh",
+  "source": "energydata_Appliances",
+  "base_mean": 97.695,
+  "base_std": 102.5223,
+  "ar1_coef": 0.753,
+  "min_clip": 10.0,
+  "max_clip": 1080.0,
+  "leads": null,
+  "daily": {
+    "amplitude": 142.1285103162426,
+    "peak_hour": 18,
+    "trough_hour": 3
+  }
+}

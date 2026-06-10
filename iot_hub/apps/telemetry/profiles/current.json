@@ -1,0 +1,36 @@
+{
+  "metric_type": "current",
+  "unit": "A",
+  "source": "household_intensity",
+  "base_mean": 4.6281,
+  "base_std": 4.4455,
+  "ar1_coef": 0.8663,
+  "min_clip": 0.2,
+  "max_clip": 48.4,
+  "leads": null,
+  "daily": {
+    "amplitude": 6.163174889129266,
+    "peak_hour": 20,
+    "trough_hour": 4
+  },
+  "seasonal": {
+    "period": "year",
+    "min_month": 8,
+    "max_month": 12,
+    "amplitude": 3.714880051056209,
+    "by_month": {
+      "1": 6.14,
+      "2": 5.45,
+      "3": 5.18,
+      "4": 4.43,
+      "5": 4.4,
+      "6": 3.92,
+      "7": 3.06,
+      "8": 2.51,
+      "9": 4.17,
+      "10": 4.8,
+      "11": 5.43,
+      "12": 6.23
+    }
+  }
+}

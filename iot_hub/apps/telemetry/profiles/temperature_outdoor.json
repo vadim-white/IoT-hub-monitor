@@ -1,0 +1,36 @@
+{
+  "metric_type": "temperature",
+  "unit": "°C",
+  "source": "rp5_moscow_2025",
+  "base_mean": 9.5158,
+  "base_std": 9.4396,
+  "ar1_coef": 0.9821,
+  "min_clip": -14.7,
+  "max_clip": 36.1,
+  "leads": null,
+  "daily": {
+    "amplitude": 3.968032786885244,
+    "peak_hour": 15,
+    "trough_hour": 6
+  },
+  "seasonal": {
+    "period": "year",
+    "min_month": 2,
+    "max_month": 7,
+    "amplitude": 27.01231925968768,
+    "by_month": {
+      "1": 0.31,
+      "2": -3.67,
+      "3": 5.21,
+      "4": 9.83,
+      "5": 14.71,
+      "6": 18.31,
+      "7": 23.34,
+      "8": 18.49,
+      "9": 15.16,
+      "10": 8.21,
+      "11": 4.37,
+      "12": -0.69
+    }
+  }
+}

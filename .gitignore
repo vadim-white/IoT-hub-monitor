@@ -21,11 +21,15 @@ staticfiles/
 media/
 db.sqlite3
 .env.local
-DOCUMENTATION.md
 setup.sh
-DESIGN.md
 CLAUDE.md
-PLAN_*.md
-RENDER_DEPLOYMENT.md
-DESIGN_2.md
-UPDATES_TO_FULL_IOT_PLATFORM.md
+# Внутренняя документация — не коммитим (кроме README.md в корне)
+docs/
+# Локальные датасеты для калибровки симулятора (не коммитим — тяжёлые)
+# Игнорируем содержимое папки, но не саму папку (иначе исключение ниже не работает)
+datasets/*
+# ...кроме energydata — он нужен для демо-телеметрии на деплое
+!datasets/energydata_complete.csv
+
+# venv для аналитики/extractor (pandas+numpy, не коммитим)
+.venv-analysis/
