@@ -243,9 +243,11 @@ class AlertThresholdViewSet(viewsets.ModelViewSet):
     """ViewSet для порогов алертов."""
     serializer_class = AlertThresholdSerializer
     permission_classes = [permissions.IsAuthenticated]
-    
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['metric', 'metric__device', 'severity', 'is_active']
+
     def get_queryset(self):
         user = self.request.user
         if user.is_superuser or (hasattr(user, 'role') and user.role.is_admin):
-            return AlertThreshold.objects.all()
-        return AlertThreshold.objects.filter(metric__device__owner=user)
+            return AlertThreshold.objects.select_related('metric').all()
+        return AlertThreshold.objects.select_related('metric').filter(metric__device__owner=user)

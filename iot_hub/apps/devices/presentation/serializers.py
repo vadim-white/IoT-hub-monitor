@@ -9,9 +9,12 @@ class DeviceTypeSerializer(serializers.ModelSerializer):
 
 
 class AlertThresholdSerializer(serializers.ModelSerializer):
+    metric_name = serializers.CharField(source='metric.name', read_only=True)
+    metric_unit = serializers.CharField(source='metric.unit', read_only=True)
+
     class Meta:
         model = AlertThreshold
-        fields = ['id', 'metric', 'severity', 'lower_bound', 'upper_bound', 'is_active']
+        fields = ['id', 'metric', 'metric_name', 'metric_unit', 'severity', 'lower_bound', 'upper_bound', 'is_active']
 
 
 class DeviceMetricSerializer(serializers.ModelSerializer):

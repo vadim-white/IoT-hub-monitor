@@ -10,7 +10,7 @@
 
     <div class="layout-2col">
         <!-- Левая колонка -->
-        <div>
+        <div style="display:flex;flex-direction:column;gap:var(--space-4,16px);">
             <div class="card">
                 <div class="card-header"><h3>Основная информация</h3></div>
                 <div class="card-body">
@@ -74,10 +74,38 @@
                     {% endif %}
                 </div>
             </div>
+
+            <!-- Пороги алертов -->
+            <div class="card">
+                <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
+                    <h3><i class="fas fa-bell"></i> Пороги алертов</h3>
+                    <button class="btn btn-primary" style="padding:4px 12px;font-size:13px;" onclick="openThresholdModal()">
+                        <i class="fas fa-plus"></i> Добавить
+                    </button>
+                </div>
+                <div class="card-body" style="padding:0;overflow-x:auto;">
+                    <table class="table" id="thresholds-table" style="min-width:360px;">
+                        <thead>
+                            <tr>
+                                <th>Метрика</th>
+                                <th style="width:70px;">Мин</th>
+                                <th style="width:70px;">Макс</th>
+                                <th style="width:110px;">Уровень</th>
+                                <th style="width:72px;text-align:right;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="thresholds-body">
+                            <tr><td colspan="5" style="text-align:center;color:var(--apple-muted);padding:20px;">
+                                <i class="fas fa-spinner fa-spin"></i> Загрузка...
+                            </td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
         <!-- Правая колонка: действия -->
-        <div class="card">
+        <div class="card" style="align-self:start;">
             <div class="card-header"><h3>Действия</h3></div>
             <div class="card-body" style="display:flex;flex-direction:column;gap:var(--space-3);">
                 <button onclick="showChart('{{ device.id }}', '{{ device.name }}')" class="btn btn-primary btn-block">
@@ -149,6 +177,58 @@
     </div>
 </div>
 
+<!-- Modal: порог алерта -->
+<div id="thresholdModal" class="modal">
+    <div class="modal-content" style="max-width:480px;">
+        <div class="modal-header">
+            <h3 id="threshold-modal-title">Добавить порог</h3>
+            <span class="close" data-dismiss="modal">&times;</span>
+        </div>
+        <form id="threshold-form" onsubmit="saveThreshold(event)">
+            {% csrf_token %}
+            <input type="hidden" id="threshold-id" value="">
+            <div class="form-group">
+                <label for="threshold-metric">Метрика *</label>
+                <select id="threshold-metric" class="form-control" required>
+                    <option value="">— Выберите метрику —</option>
+                    {% for metric in device.metrics.all %}
+                    <option value="{{ metric.id }}" data-unit="{{ metric.unit }}">{{ metric.name }} ({{ metric.unit }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="threshold-severity">Уровень *</label>
+                <select id="threshold-severity" class="form-control" required>
+                    <option value="info">Информация</option>
+                    <option value="warning" selected>Предупреждение</option>
+                    <option value="critical">Критичный</option>
+                </select>
+            </div>
+            <div style="display:flex;justify-content:center;gap:16px;margin:0 0 4px;">
+                <div class="form-group" style="margin:0;width:160px;">
+                    <label for="threshold-lower" style="display:block;text-align:center;">Нижняя граница</label>
+                    <input type="number" step="any" id="threshold-lower" class="form-control" placeholder="не задана">
+                </div>
+                <div class="form-group" style="margin:0;width:160px;">
+                    <label for="threshold-upper" style="display:block;text-align:center;">Верхняя граница</label>
+                    <input type="number" step="any" id="threshold-upper" class="form-control" placeholder="не задана">
+                </div>
+            </div>
+            <div id="threshold-bounds-error" style="display:none;color:var(--apple-red,#FF3B30);font-size:12px;margin-top:6px;padding:0 2px;">
+                Мин должен быть меньше Макс
+            </div>
+            <div class="form-group" style="margin-top:14px;display:flex;align-items:center;gap:10px;">
+                <input type="checkbox" id="threshold-active" checked style="width:16px;height:16px;">
+                <label for="threshold-active" style="margin:0;cursor:pointer;">Активен</label>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Отмена</button>
+                <button type="submit" class="btn btn-primary">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Modal: график -->
 <div id="chartModal" class="modal">
     <div class="modal-content" style="max-width:820px;">
@@ -164,4 +244,197 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const DEVICE_ID = '{{ device.id }}';
+const CSRF = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+const SEVERITY_LABELS = { info: 'Информация', warning: 'Предупреждение', critical: 'Критичный' };
+const SEVERITY_COLORS = { info: 'var(--apple-blue,#5A67D8)', warning: 'var(--apple-warning,#FF9500)', critical: 'var(--apple-red,#FF3B30)' };
+
+function loadThresholds() {
+    fetch(`/api/devices/thresholds/?metric__device=${DEVICE_ID}`)
+        .then(r => r.json())
+        .then(data => renderThresholds(data.results || data))
+        .catch(() => {
+            document.getElementById('thresholds-body').innerHTML =
+                '<tr><td colspan="6" style="text-align:center;color:var(--apple-muted);">Ошибка загрузки</td></tr>';
+        });
+}
+
+function renderThresholds(list) {
+    const tbody = document.getElementById('thresholds-body');
+    if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--apple-muted);padding:20px;">Пороги не настроены</td></tr>';
+        return;
+    }
+    tbody.innerHTML = list.map(t => `
+        <tr>
+            <td style="font-size:13px;">${t.metric_name || '—'} <span style="font-size:11px;color:var(--apple-muted);">${t.metric_unit || ''}</span>${!t.is_active ? ' <span style="font-size:11px;color:var(--apple-muted);">(откл.)</span>' : ''}</td>
+            <td style="font-size:13px;">${t.lower_bound !== null ? t.lower_bound : '<span style="color:var(--apple-muted)">−∞</span>'}</td>
+            <td style="font-size:13px;">${t.upper_bound !== null ? t.upper_bound : '<span style="color:var(--apple-muted)">+∞</span>'}</td>
+            <td><span style="color:${SEVERITY_COLORS[t.severity]};font-size:13px;font-weight:500;">${SEVERITY_LABELS[t.severity] || t.severity}</span></td>
+            <td style="text-align:right;white-space:nowrap;">
+                <button class="btn btn-secondary btn-edit-threshold" style="padding:3px 8px;font-size:12px;margin-right:4px;"
+                    data-threshold='${JSON.stringify(t).replace(/'/g, "&#39;")}'><i class="fas fa-edit"></i></button>
+                <button class="btn btn-danger btn-delete-threshold" style="padding:3px 8px;font-size:12px;"
+                    data-id="${t.id}" data-name="${(t.metric_name||'').replace(/"/g,'&quot;')}"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>
+    `).join('');
+
+    tbody.querySelectorAll('.btn-edit-threshold').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            openThresholdModal(JSON.parse(this.dataset.threshold));
+        });
+    });
+    tbody.querySelectorAll('.btn-delete-threshold').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            deleteThreshold(this.dataset.id, this.dataset.name);
+        });
+    });
+}
+
+function openThresholdModal(threshold) {
+    const modal = document.getElementById('thresholdModal');
+    if (threshold && typeof threshold === 'object') {
+        document.getElementById('threshold-modal-title').textContent = 'Редактировать порог';
+        document.getElementById('threshold-id').value = threshold.id;
+        document.getElementById('threshold-metric').value = threshold.metric;
+        document.getElementById('threshold-severity').value = threshold.severity;
+        document.getElementById('threshold-lower').value = threshold.lower_bound !== null ? threshold.lower_bound : '';
+        document.getElementById('threshold-upper').value = threshold.upper_bound !== null ? threshold.upper_bound : '';
+        document.getElementById('threshold-active').checked = threshold.is_active;
+    } else {
+        document.getElementById('threshold-modal-title').textContent = 'Добавить порог';
+        document.getElementById('threshold-id').value = '';
+        document.getElementById('threshold-form').reset();
+        document.getElementById('threshold-active').checked = true;
+        document.getElementById('threshold-severity').value = 'warning';
+    }
+    document.getElementById('threshold-bounds-error').style.display = 'none';
+    document.getElementById('threshold-lower').style.borderColor = '';
+    document.getElementById('threshold-upper').style.borderColor = '';
+    modal.classList.add('show');
+}
+
+function saveThreshold(e) {
+    e.preventDefault();
+    const id = document.getElementById('threshold-id').value;
+    const lower = document.getElementById('threshold-lower').value;
+    const upper = document.getElementById('threshold-upper').value;
+    const errEl = document.getElementById('threshold-bounds-error');
+
+    // Validate: lower must be less than upper if both are set
+    if (lower !== '' && upper !== '' && parseFloat(lower) >= parseFloat(upper)) {
+        errEl.style.display = 'block';
+        document.getElementById('threshold-lower').style.borderColor = 'var(--apple-red,#FF3B30)';
+        document.getElementById('threshold-upper').style.borderColor = 'var(--apple-red,#FF3B30)';
+        return;
+    }
+    errEl.style.display = 'none';
+    document.getElementById('threshold-lower').style.borderColor = '';
+    document.getElementById('threshold-upper').style.borderColor = '';
+
+    const body = {
+        metric: document.getElementById('threshold-metric').value,
+        severity: document.getElementById('threshold-severity').value,
+        lower_bound: lower !== '' ? parseFloat(lower) : null,
+        upper_bound: upper !== '' ? parseFloat(upper) : null,
+        is_active: document.getElementById('threshold-active').checked,
+    };
+    const url = id ? `/api/devices/thresholds/${id}/` : '/api/devices/thresholds/';
+    const method = id ? 'PATCH' : 'POST';
+
+    fetch(url, {
+        method,
+        headers: { 'X-CSRFToken': CSRF, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    })
+    .then(r => { if (!r.ok) return r.json().then(d => { throw d; }); return r.json(); })
+    .then(() => {
+        document.getElementById('thresholdModal').classList.remove('show');
+        loadThresholds();
+    })
+    .catch(err => alert('Ошибка: ' + JSON.stringify(err)));
+}
+
+function deleteThreshold(id, name) {
+    if (!confirm(`Удалить порог для метрики "${name}"?`)) return;
+    fetch(`/api/devices/thresholds/${id}/`, {
+        method: 'DELETE',
+        headers: { 'X-CSRFToken': CSRF },
+    }).then(r => { if (r.ok) loadThresholds(); });
+}
+
+function showChart(deviceId, deviceName) {
+    document.getElementById('chart-title').textContent = deviceName;
+    document.getElementById('chartModal').classList.add('show');
+    fetch(`/api/telemetry/readings/by_device/?device_id=${deviceId}&limit=50`)
+        .then(r => r.json())
+        .then(data => {
+            const readings = (data.results || data).slice().reverse();
+            const labels = readings.map(r => r.recorded_at ? r.recorded_at.slice(0,10) : '');
+            const values = readings.map(r => r.value);
+            const ctx = document.getElementById('telemetryChart').getContext('2d');
+            if (window._chart) window._chart.destroy();
+            window._chart = new Chart(ctx, {
+                type: 'line',
+                data: { labels, datasets: [{ label: 'Значение', data: values, borderColor: '#5A67D8', tension: 0.3, fill: false }] },
+                options: { responsive: true, plugins: { legend: { display: false } } }
+            });
+        });
+}
+
+
+function openEditDeviceModal(deviceId) {
+    fetch(`/api/devices/devices/${deviceId}/`)
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('edit-device-id').value = data.id;
+            document.getElementById('edit-device-name').value = data.name || '';
+            document.getElementById('edit-device-serial').value = data.serial_number || '';
+            document.getElementById('edit-device-type').value = data.device_type || '';
+            document.getElementById('edit-device-status').value = data.status || 'active';
+            document.getElementById('edit-device-location').value = data.location_name || '';
+            document.getElementById('edit-device-description').value = data.description || '';
+            document.getElementById('editDeviceModal').classList.add('show');
+        });
+}
+
+document.getElementById('edit-device-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const id = document.getElementById('edit-device-id').value;
+    fetch(`/api/devices/devices/${id}/`, {
+        method: 'PATCH',
+        headers: { 'X-CSRFToken': CSRF, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            name: document.getElementById('edit-device-name').value,
+            device_type: document.getElementById('edit-device-type').value || null,
+            status: document.getElementById('edit-device-status').value,
+            location_name: document.getElementById('edit-device-location').value,
+            description: document.getElementById('edit-device-description').value,
+        }),
+    }).then(() => location.reload());
+});
+
+function deleteDevice(deviceId, deviceName) {
+    if (!confirm(`Удалить устройство "${deviceName}"?`)) return;
+    fetch(`/api/devices/devices/${deviceId}/`, {
+        method: 'DELETE',
+        headers: { 'X-CSRFToken': CSRF },
+    }).then(r => { if (r.ok) window.location.href = '/devices/'; });
+}
+
+document.querySelectorAll('.modal').forEach(function(modal) {
+    modal.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('show'); });
+    modal.querySelectorAll('[data-dismiss="modal"]').forEach(function(btn) {
+        btn.addEventListener('click', function() { modal.classList.remove('show'); });
+    });
+});
+
+loadThresholds();
+</script>
 {% endblock %}

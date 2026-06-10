@@ -14,7 +14,8 @@ from iot_hub.apps.telemetry.presentation.serializers import (
     TelemetrySerializer, TelemetryBatchSerializer, TelemetryStatisticsSerializer,
     TelemetryCreateSerializer
 )
-from iot_hub.apps.devices.models import Device
+from iot_hub.apps.devices.models import Device, AlertThreshold
+from iot_hub.apps.alerts.models import Alert
 from iot_hub.apps.common.infrastructure.utils import export_telemetry_csv, export_telemetry_json
 
 
@@ -215,6 +216,26 @@ class TelemetryViewSet(viewsets.ModelViewSet):
                         raw_data=metric_data
                     )
                     created_count += 1
+
+                    thresholds = AlertThreshold.objects.filter(
+                        metric_id=metric_id, is_active=True
+                    ).select_related('metric')
+                    for threshold in thresholds:
+                        if threshold.check_threshold(value):
+                            Alert.objects.create(
+                                device=device,
+                                metric_id=metric_id,
+                                threshold=threshold,
+                                telemetry=telemetry,
+                                severity=threshold.severity,
+                                value=value,
+                                message=(
+                                    f"{threshold.metric.name}: {value} {metric_data.get('unit', '')} "
+                                    f"(допустимо: {threshold.lower_bound if threshold.lower_bound is not None else '−∞'}"
+                                    f" — {threshold.upper_bound if threshold.upper_bound is not None else '+∞'})"
+                                ),
+                                status='new',
+                            )
                 except Exception as e:
                     pass
         
