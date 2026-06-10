@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from ..base import AnomalyDetector
 from .zscore import ZScoreDetector
+from .iforest import IsolationForestDetector
 
 DETECTOR_REGISTRY: dict[str, type[AnomalyDetector]] = {
     "zscore": ZScoreDetector,
-    # "iforest": IsolationForestDetector,   # инкремент 2 (sklearn)
+    "iforest": IsolationForestDetector,
     # "autoencoder": AutoencoderDetector,   # инкремент 3 (torch)
 }
 

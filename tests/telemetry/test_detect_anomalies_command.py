@@ -72,3 +72,14 @@ class TestDetectAnomaliesCommand(TestCase):
         before = Alert.objects.count()
         call_command("detect_anomalies", "--device", "DEV001", stdout=StringIO())
         assert Alert.objects.count() == before
+
+    def test_iforest_method_runs(self):
+        """Метод iforest отрабатывает, IF-параметры пробрасываются."""
+        pytest.importorskip("sklearn")
+        out = StringIO()
+        call_command("detect_anomalies", "--device", "DEV001", "--metric", "temperature",
+                     "--method", "iforest", "--window", "24", "--threshold", "0.0",
+                     "--contamination", "0.05", stdout=out)
+        text = out.getvalue()
+        assert "method=iforest" in text
+        assert "precision" in text

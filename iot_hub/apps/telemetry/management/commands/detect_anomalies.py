@@ -30,14 +30,21 @@ class Command(BaseCommand):
         parser.add_argument("--metric", default=None,
                             help="metric_type (по умолчанию — все метрики устройства)")
         parser.add_argument("--method", default="zscore",
-                            help="метод детекции из реестра (пока только zscore)")
+                            help="метод детекции из реестра: zscore, iforest")
         parser.add_argument("--window", type=int, default=24,
                             help="размер окна в точках (24 = 4ч при шаге 10 мин)")
         parser.add_argument("--threshold", type=float, default=3.0,
-                            help="порог решения по anomaly score")
+                            help="порог решения по anomaly score (для iforest 0.0 ≈ sklearn-predict)")
         parser.add_argument("--days", type=int, default=None,
                             help="ограничить выборку последними N днями")
         parser.add_argument("--report", choices=["text", "json"], default="text")
+        # параметры Isolation Forest (игнорируются другими методами)
+        parser.add_argument("--contamination", type=float, default=0.02,
+                            help="iforest: ожидаемая доля аномалий")
+        parser.add_argument("--n-estimators", type=int, default=200,
+                            help="iforest: число деревьев")
+        parser.add_argument("--random-state", type=int, default=42,
+                            help="iforest: seed для воспроизводимости")
 
     def handle(self, *args, **opts):
         qs = Device.objects.prefetch_related("metrics")
@@ -59,8 +66,14 @@ class Command(BaseCommand):
                 if len(series) <= opts["window"]:
                     continue
 
-                detector = build_detector(
-                    opts["method"], window=opts["window"], threshold=opts["threshold"])
+                params = {"window": opts["window"], "threshold": opts["threshold"]}
+                if opts["method"] == "iforest":
+                    params.update(
+                        contamination=opts["contamination"],
+                        n_estimators=opts["n_estimators"],
+                        random_state=opts["random_state"],
+                    )
+                detector = build_detector(opts["method"], **params)
                 result = detector.fit(series).predict(series)
 
                 pm = point_metrics(series.labels, result.predictions, result.warmup_mask)
