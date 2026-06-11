@@ -16,17 +16,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Build Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: false
-          tags: iot-hub-web:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+        run: docker build -t iot-hub-web:latest .
 
   # -----------------------
   # DEPLOY
