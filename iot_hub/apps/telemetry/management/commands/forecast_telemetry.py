@@ -36,6 +36,11 @@ class Command(BaseCommand):
         parser.add_argument("--max-origins", type=int, default=10)
         parser.add_argument("--report", choices=["text", "json"], default="text")
         parser.add_argument("--random-state", type=int, default=42)
+        # предиктивные алерты: прогноз пересекает порог AlertThreshold
+        parser.add_argument("--write-alerts", action="store_true",
+                            help="создавать Alert(source=ml_forecast), если прогноз выходит за порог")
+        parser.add_argument("--dedup-hours", type=int, default=6,
+                            help="--write-alerts: окно дедупликации предиктивных алертов (часы)")
         # lstm-специфичные
         parser.add_argument("--window", type=int, default=144)
         parser.add_argument("--epochs", type=int, default=100)
@@ -52,6 +57,7 @@ class Command(BaseCommand):
             return
 
         results = []
+        alerts_created = 0
         for device in devices:
             metrics = device.metrics.all()
             if opts["metric"]:
@@ -70,9 +76,17 @@ class Command(BaseCommand):
                 if res["n_origins"]:
                     results.append((device, metric, res))
 
+                if opts["write_alerts"]:
+                    alerts_created += self._write_forecast_alert(
+                        device, metric, series, factory, opts)
+
         if not results:
             self.stderr.write(self.style.ERROR("Нет рядов достаточной длины"))
             return
+
+        if opts["write_alerts"]:
+            self.stdout.write(self.style.SUCCESS(
+                f"\nСоздано предиктивных алертов: {alerts_created}"))
 
         if opts["report"] == "json":
             self._report_json(results, opts)
@@ -92,6 +106,66 @@ class Command(BaseCommand):
                 "random_state": opts["random_state"],
             }
         return {}
+
+    def _write_forecast_alert(self, device, metric, series, factory, opts):
+        """Создаёт предиктивный алерт, если прогноз пересекает активный порог.
+
+        Обучаемся на всём ряде, прогнозируем horizon вперёд и через
+        predict_threshold_crossing находим первую точку за самым жёстким порогом.
+        Возвращает 1, если создан НОВЫЙ алерт (иначе 0 — дубль или нет пересечения).
+        """
+        from iot_hub.apps.alerts.application.ml_alerts import create_ml_alert
+        from iot_hub.apps.devices.models import AlertThreshold
+        from iot_hub.apps.telemetry.ml.forecast_base import infer_step
+        from iot_hub.apps.telemetry.ml.predictive_alert import predict_threshold_crossing
+
+        thresholds = list(AlertThreshold.objects.filter(metric=metric, is_active=True))
+        if not thresholds:
+            return 0
+
+        # самые жёсткие границы среди активных порогов (наибольший lower, наименьший upper)
+        lowers = [t.lower_bound for t in thresholds if t.lower_bound is not None]
+        uppers = [t.upper_bound for t in thresholds if t.upper_bound is not None]
+        lower_bound = max(lowers) if lowers else None
+        upper_bound = min(uppers) if uppers else None
+        if lower_bound is None and upper_bound is None:
+            return 0
+
+        step_min = infer_step(series.timestamps).astype("timedelta64[s]").astype(float) / 60.0
+        fc = factory().fit(series).forecast(opts["horizon"])
+        crossing = predict_threshold_crossing(fc, lower_bound, upper_bound, step_min)
+        if not crossing.will_cross:
+            return 0
+
+        bound_val = upper_bound if crossing.bound_type == "upper" else lower_bound
+        bound_kind = "выше" if crossing.bound_type == "upper" else "ниже"
+        # severity — у порога, давшего сработавшую границу
+        severity = next(
+            (t.severity for t in thresholds
+             if (crossing.bound_type == "upper" and t.upper_bound == bound_val)
+             or (crossing.bound_type == "lower" and t.lower_bound == bound_val)),
+            "warning")
+        lead_hours = round(crossing.lead_time_hours, 1)
+        value = crossing.crossing_value
+
+        _, created = create_ml_alert(
+            device=device, metric=metric, source="ml_forecast",
+            severity=severity, value=value, message=(
+                f"Предиктивный алерт ({fc.meta['method']}): {metric.name} "
+                f"выйдет {bound_kind} порога {bound_val} {metric.unit} "
+                f"через ~{lead_hours} ч (прогноз {value:.2f})"),
+            dedup_hours=opts["dedup_hours"],
+            metadata={
+                "method": fc.meta["method"],
+                "lead_time_hours": lead_hours,
+                "forecast_value": round(value, 4),
+                "bound": bound_val,
+                "bound_kind": bound_kind,
+                "horizon": opts["horizon"],
+            },
+        )
+        return 1 if created else 0
+        return 0
 
     def _report_text(self, results, opts):
         for device, metric, res in results:

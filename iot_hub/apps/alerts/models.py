@@ -18,7 +18,13 @@ class Alert(models.Model):
         ('warning', 'Предупреждение'),
         ('critical', 'Критичный'),
     )
-    
+
+    SOURCE_CHOICES = (
+        ('threshold', 'Порог'),
+        ('ml_anomaly', 'ML-аномалия'),
+        ('ml_forecast', 'ML-прогноз'),
+    )
+
     device = models.ForeignKey(Device, on_delete=models.CASCADE, related_name='alerts')
     metric = models.ForeignKey(DeviceMetric, on_delete=models.CASCADE, related_name='alerts')
     threshold = models.ForeignKey(AlertThreshold, on_delete=models.SET_NULL, null=True, related_name='alerts')
@@ -26,9 +32,11 @@ class Alert(models.Model):
     
     severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES, default='warning')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='new')
-    
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default='threshold', db_index=True)
+
     message = models.TextField()
     value = models.FloatField()
+    metadata = models.JSONField(default=dict, blank=True)
     
     acknowledged_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, blank=True, related_name='acknowledged_alerts'

@@ -32,11 +32,11 @@ class AlertSerializer(serializers.ModelSerializer):
     class Meta:
         model = Alert
         fields = ['id', 'device', 'device_name', 'metric', 'metric_name', 'metric_details',
-                  'threshold', 'severity', 'status', 'message', 'value',
+                  'threshold', 'severity', 'status', 'source', 'metadata', 'message', 'value',
                   'acknowledged_by', 'acknowledged_by_name', 'acknowledged_at',
                   'resolved_by', 'resolved_by_name', 'resolved_at',
                   'telemetry', 'created_at', 'updated_at', 'history', 'notifications']
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'source', 'metadata']
 
 
 class AlertCreateSerializer(serializers.ModelSerializer):

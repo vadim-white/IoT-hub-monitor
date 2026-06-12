@@ -482,6 +482,41 @@ body {
     border: 1px solid rgba(90,103,216,0.35);
 }
 
+/* Alert source badges — порог (нейтральный) vs ML (акцент) */
+.badge-source-threshold {
+    background: rgba(148,163,184,0.15); color: #94a3b8;
+    border: 1px solid rgba(148,163,184,0.35);
+}
+.badge-source-ml_anomaly {
+    background: rgba(45,212,191,0.15); color: #2dd4bf;
+    border: 1px solid rgba(45,212,191,0.4);
+}
+.badge-source-ml_forecast {
+    background: rgba(168,85,247,0.15); color: #c084fc;
+    border: 1px solid rgba(168,85,247,0.4);
+}
+
+/* Source filter tabs */
+.alert-source-filter {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+}
+.source-tab {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 8px; font-size: 13px;
+    color: var(--text-muted); text-decoration: none;
+    border: 1px solid var(--border); transition: all 0.15s;
+}
+.source-tab:hover { color: var(--text); border-color: var(--blue); }
+.source-tab--active {
+    background: rgba(90,103,216,0.15); color: var(--blue-l);
+    border-color: rgba(90,103,216,0.45);
+}
+.source-tab-count {
+    font-weight: 600; font-size: 12px;
+    background: rgba(255,255,255,0.08); padding: 1px 7px; border-radius: 10px;
+}
+
 /* Alert device type icon */
 .alert-device-icon {
     width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;

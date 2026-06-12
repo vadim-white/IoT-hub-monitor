@@ -103,58 +103,71 @@ def main():
         "Collecting static files"
     )
     
-    # Check if we should initialize data (only if database is fresh)
     import django
     django.setup()
     from django.db import connection
-    
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public'")
-            table_count = cursor.fetchone()[0]
-        
-        # If we have schema tables, init_db.py already ran
-        if table_count > 0:
-            logger.info("Database already initialized, skipping init_db.py")
-        else:
-            run_command("python init_db.py", "Initializing database")
-    except Exception as e:
-        logger.warning(f"Could not check table count: {e}")
-    
-    # Load telemetry data
-    run_command(
-        "python load_telemetry_data.py",
-        "Loading telemetry data"
-    )
 
-    # Shift telemetry dates so the latest record is always today
-    run_command(
-        "python shift_telemetry_dates.py",
-        "Shifting telemetry dates to today"
-    )
+    # Демо-данные (init_db / load / shift / seed / last_seen) разрушительны: они
+    # сбрасывают телеметрию и пересоздают алерты. Нужны для свежего демо НА RENDER,
+    # но мешают локальной разработке (стирают наши ML-алерты при каждом рестарте).
+    # Render всегда выставляет RENDER_EXTERNAL_HOSTNAME — по нему и отличаем прод.
+    # Локально шаг пропускается (FORCE_SEED_DEMO=1 — принудительно прогнать вручную).
+    on_render = bool(os.environ.get('RENDER_EXTERNAL_HOSTNAME'))
+    seed_demo = on_render or os.environ.get('FORCE_SEED_DEMO') == '1'
 
-    # Seed demo alerts (always reset to keep data fresh)
-    run_command(
-        "python seed_alerts.py --reset",
-        "Seeding demo alerts"
-    )
+    if not seed_demo:
+        logger.info("Локальный запуск (нет RENDER_EXTERNAL_HOSTNAME) — "
+                    "демо-данные НЕ пересоздаются, существующие данные сохранены. "
+                    "Для принудительного сидинга: FORCE_SEED_DEMO=1.")
+    else:
+        # Check if we should initialize data (only if database is fresh)
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public'")
+                table_count = cursor.fetchone()[0]
 
-    # Refresh last_seen_at for ALL devices on every deploy so time stays fresh
-    try:
-        import random
-        from django.utils import timezone
-        from datetime import timedelta
-        from iot_hub.apps.devices.models import Device
-        devices = list(Device.objects.all())
-        for device in devices:
-            device.last_seen_at = timezone.now() - timedelta(minutes=random.randint(1, 60))
-        if devices:
-            Device.objects.bulk_update(devices, ['last_seen_at'])
-            logger.info(f"✅ Обновлено last_seen_at для {len(devices)} устройств")
-        else:
-            logger.info("✅ Нет устройств для обновления last_seen_at")
-    except Exception as e:
-        logger.warning(f"Could not refresh last_seen_at: {e}")
+            # If we have schema tables, init_db.py already ran
+            if table_count > 0:
+                logger.info("Database already initialized, skipping init_db.py")
+            else:
+                run_command("python init_db.py", "Initializing database")
+        except Exception as e:
+            logger.warning(f"Could not check table count: {e}")
+
+        # Load telemetry data
+        run_command(
+            "python load_telemetry_data.py",
+            "Loading telemetry data"
+        )
+
+        # Shift telemetry dates so the latest record is always today
+        run_command(
+            "python shift_telemetry_dates.py",
+            "Shifting telemetry dates to today"
+        )
+
+        # Seed demo alerts (always reset to keep data fresh)
+        run_command(
+            "python seed_alerts.py --reset",
+            "Seeding demo alerts"
+        )
+
+        # Refresh last_seen_at for ALL devices on every deploy so time stays fresh
+        try:
+            import random
+            from django.utils import timezone
+            from datetime import timedelta
+            from iot_hub.apps.devices.models import Device
+            devices = list(Device.objects.all())
+            for device in devices:
+                device.last_seen_at = timezone.now() - timedelta(minutes=random.randint(1, 60))
+            if devices:
+                Device.objects.bulk_update(devices, ['last_seen_at'])
+                logger.info(f"✅ Обновлено last_seen_at для {len(devices)} устройств")
+            else:
+                logger.info("✅ Нет устройств для обновления last_seen_at")
+        except Exception as e:
+            logger.warning(f"Could not refresh last_seen_at: {e}")
 
     # Start gunicorn
     logger.info("Starting gunicorn...")

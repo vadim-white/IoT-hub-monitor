@@ -12,6 +12,7 @@
 import json
 
 from django.core.management.base import BaseCommand
+from django.utils import timezone
 
 from iot_hub.apps.devices.models import Device
 from iot_hub.apps.telemetry.ml.detectors import build_detector
@@ -38,6 +39,16 @@ class Command(BaseCommand):
         parser.add_argument("--days", type=int, default=None,
                             help="ограничить выборку последними N днями")
         parser.add_argument("--report", choices=["text", "json"], default="text")
+        # запись ML-аномалий в Alert (по умолчанию команда только оценивает)
+        parser.add_argument("--write-alerts", action="store_true",
+                            help="создавать Alert(source=ml_anomaly) по аномалиям в свежем хвосте ряда")
+        parser.add_argument("--tail", type=int, default=144,
+                            help="--write-alerts: сколько последних точек считать «свежими» (144 = сутки)")
+        parser.add_argument("--dedup-hours", type=int, default=6,
+                            help="--write-alerts: окно дедупликации алертов того же типа (часы)")
+        parser.add_argument("--alert-severity", default="warning",
+                            choices=["info", "warning", "critical"],
+                            help="--write-alerts: severity создаваемых ML-алертов")
         # параметры Isolation Forest (игнорируются другими методами)
         parser.add_argument("--contamination", type=float, default=0.02,
                             help="iforest: ожидаемая доля аномалий")
@@ -66,6 +77,7 @@ class Command(BaseCommand):
 
         results = []
         agg = {"tp": 0, "fp": 0, "fn": 0, "tn": 0}
+        alerts_created = 0
         for device in devices:
             metrics = device.metrics.all()
             if opts["metric"]:
@@ -103,14 +115,71 @@ class Command(BaseCommand):
                     agg[k] += getattr(pm, k)
                 results.append((device, metric, pm, ptr, lat, result.meta))
 
+                if opts["write_alerts"]:
+                    alerts_created += self._write_alerts(
+                        device, metric, series, result, opts)
+
         if not results:
             self.stderr.write(self.style.ERROR("Нет рядов длиннее окна для анализа"))
             return
+
+        if opts["write_alerts"]:
+            self.stdout.write(self.style.SUCCESS(
+                f"\nСоздано ML-алертов: {alerts_created}"))
 
         if opts["report"] == "json":
             self._report_json(results, agg)
         else:
             self._report_text(results, agg)
+
+    def _write_alerts(self, device, metric, series, result, opts):
+        """Создаёт ML-алерт по самой сильной аномалии в свежем хвосте ряда.
+
+        Смотрим только последние --tail точек (имитация скоринга свежих данных),
+        исключаем warmup, берём точку с максимальным score. Дедуп — в create_ml_alert.
+        Возвращает число созданных алертов (0 или 1).
+        """
+        from datetime import datetime
+
+        import numpy as np
+
+        from iot_hub.apps.alerts.application.ml_alerts import create_ml_alert
+        from iot_hub.apps.telemetry.models import Telemetry
+
+        n = len(series)
+        tail = min(opts["tail"], n)
+        start = n - tail
+        # кандидаты: аномалия, вне warmup, в пределах хвоста
+        mask = result.predictions & ~result.warmup_mask
+        mask[:start] = False
+        idx = np.flatnonzero(mask)
+        if idx.size == 0:
+            return 0
+
+        best = idx[int(np.argmax(result.scores[idx]))]
+        value = float(series.values[best])
+        score = float(result.scores[best])
+        # связываем точку с её Telemetry-записью по времени (best-effort)
+        ts = series.timestamps[best].astype("datetime64[us]").astype(datetime)
+        telemetry = Telemetry.objects.filter(
+            device=device, metric=metric,
+            recorded_at=ts.replace(tzinfo=timezone.utc),
+        ).first()
+
+        _, created = create_ml_alert(
+            device=device, metric=metric, source="ml_anomaly",
+            severity=opts["alert_severity"], value=value, message=(
+                f"ML-аномалия ({result.meta['method']}): {metric.name} = "
+                f"{value:.2f} {metric.unit} (anomaly score {score:.2f})"),
+            telemetry=telemetry, dedup_hours=opts["dedup_hours"],
+            metadata={
+                "method": result.meta["method"],
+                "score": round(score, 4),
+                "window": result.meta.get("window"),
+                "threshold": result.threshold,
+            },
+        )
+        return 1 if created else 0
 
     def _report_text(self, results, agg):
         for device, metric, pm, ptr, lat, meta in results:

@@ -197,9 +197,22 @@ def alerts_list(request):
     else:
         alerts = Alert.objects.filter(device__owner=user)
 
+    # счётчики по источникам считаем до фильтра, чтобы переключатель показывал общее число
+    source_counts = {
+        'all': alerts.count(),
+        'threshold': alerts.filter(source='threshold').count(),
+        'ml_anomaly': alerts.filter(source='ml_anomaly').count(),
+        'ml_forecast': alerts.filter(source='ml_forecast').count(),
+    }
+    source_filter = request.GET.get('source')
+    if source_filter in ('threshold', 'ml_anomaly', 'ml_forecast'):
+        alerts = alerts.filter(source=source_filter)
+
     context = {
         'alerts': alerts,
         'is_admin': is_admin,
+        'source_filter': source_filter,
+        'source_counts': source_counts,
         'new_count': alerts.filter(status='new').count(),
         'acknowledged_count': alerts.filter(status='acknowledged').count(),
         'resolved_count': alerts.filter(status='resolved').count(),

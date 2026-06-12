@@ -125,4 +125,59 @@ for user in User.objects.all():
                 alert.save()
                 created_count += 1
 
-print(f"✅ Создано алертов: {created_count}")
+print(f"✅ Создано пороговых алертов: {created_count}")
+
+
+# ── Демо ML-алертов (заглушка витрины ML на деплое) ───────────────────────────
+# Это НЕ результат прогона моделей, а статичные демо-записи, чтобы на Render была
+# видна ML-секция (бейджи source=ml_anomaly/ml_forecast + фильтр в /alerts/).
+# Реальные ML-алерты создаёт `manage.py detect_anomalies/forecast_telemetry
+# --write-alerts` по живой телеметрии. Когда подключим сохранение весов/ONNX и
+# автоскоринг — этот демо-блок убираем, а команды зовём из entrypoint вместо него.
+ML_DEMO = [
+    {
+        'source': 'ml_anomaly', 'severity': 'warning', 'metric_type': 'temperature',
+        'msg': 'ML-аномалия (iforest): Температура = 36.13 °C (anomaly score 0.61)',
+        'value': 36.13,
+        'metadata': {'method': 'iforest', 'score': 0.61, 'window': 24, 'threshold': 0.0},
+    },
+    {
+        'source': 'ml_anomaly', 'severity': 'warning', 'metric_type': 'humidity',
+        'msg': 'ML-аномалия (iforest): Влажность = 12.40 % (anomaly score 0.48)',
+        'value': 12.40,
+        'metadata': {'method': 'iforest', 'score': 0.48, 'window': 24, 'threshold': 0.0},
+    },
+    {
+        'source': 'ml_forecast', 'severity': 'critical', 'metric_type': 'temperature',
+        'msg': 'Предиктивный алерт (holtwinters): Температура выйдет выше порога '
+               '57.2 °C через ~5.0 ч (прогноз 58.40)',
+        'value': 58.40,
+        'metadata': {'method': 'holtwinters', 'lead_time_hours': 5.0,
+                     'forecast_value': 58.4, 'bound': 57.2, 'bound_kind': 'выше',
+                     'horizon': 36},
+    },
+]
+
+ml_count = 0
+for user in User.objects.all():
+    devices = list(Device.objects.filter(owner=user).prefetch_related('metrics'))
+    for demo in ML_DEMO:
+        # ищем устройство с подходящей метрикой
+        target = next(
+            ((d, m) for d in devices for m in d.metrics.filter(is_active=True)
+             if m.metric_type == demo['metric_type']),
+            None)
+        if target is None:
+            continue
+        device, metric = target
+        created_at = now - timedelta(hours=random.randint(1, 36))
+        Alert.objects.create(
+            device=device, metric=metric, threshold=None, telemetry=None,
+            source=demo['source'], severity=demo['severity'], status='new',
+            message=demo['msg'], value=demo['value'], metadata=demo['metadata'],
+            created_at=created_at, updated_at=created_at,
+        )
+        ml_count += 1
+
+print(f"✅ Создано демо ML-алертов: {ml_count}")
+print(f"✅ Всего алертов: {created_count + ml_count}")

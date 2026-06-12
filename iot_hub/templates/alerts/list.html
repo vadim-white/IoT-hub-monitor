@@ -53,6 +53,17 @@
     <div class="card">
         <div class="card-header"><h3>Все алерты</h3></div>
 
+        <div class="alert-source-filter">
+            <a href="?" class="source-tab {% if not source_filter %}source-tab--active{% endif %}">
+                Все <span class="source-tab-count">{{ source_counts.all }}</span></a>
+            <a href="?source=threshold" class="source-tab {% if source_filter == 'threshold' %}source-tab--active{% endif %}">
+                <i class="fas fa-ruler-horizontal"></i> Порог <span class="source-tab-count">{{ source_counts.threshold }}</span></a>
+            <a href="?source=ml_anomaly" class="source-tab {% if source_filter == 'ml_anomaly' %}source-tab--active{% endif %}">
+                <i class="fas fa-robot"></i> ML-аномалия <span class="source-tab-count">{{ source_counts.ml_anomaly }}</span></a>
+            <a href="?source=ml_forecast" class="source-tab {% if source_filter == 'ml_forecast' %}source-tab--active{% endif %}">
+                <i class="fas fa-chart-line"></i> ML-прогноз <span class="source-tab-count">{{ source_counts.ml_forecast }}</span></a>
+        </div>
+
         {% for alert in alerts %}
         {% with dtype=alert.device.device_type.name|lower %}
         <div class="alert-row alert-{{ alert.severity }} {% if alert.status == 'resolved' or alert.status == 'closed' %}alert-row--closed{% endif %}"
@@ -81,6 +92,11 @@
                 </div>
             </div>
             <div class="alert-badges">
+                <span class="badge badge-source-{{ alert.source }}" title="Источник алерта">
+                    {% if alert.source == 'ml_anomaly' %}<i class="fas fa-robot"></i>
+                    {% elif alert.source == 'ml_forecast' %}<i class="fas fa-chart-line"></i>
+                    {% else %}<i class="fas fa-ruler-horizontal"></i>{% endif %}
+                    {{ alert.get_source_display }}</span>
                 <span class="badge badge-severity-{{ alert.severity }}">{{ alert.get_severity_display }}</span>
                 <span class="badge badge-{{ alert.status }}" id="badge-{{ alert.id }}">{{ alert.get_status_display }}</span>
             </div>
