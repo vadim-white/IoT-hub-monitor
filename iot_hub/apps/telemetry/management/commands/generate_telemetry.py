@@ -63,6 +63,12 @@ class Command(BaseCommand):
                             help="Не удалять старую телеметрию (по умолчанию заменяем)")
         parser.add_argument("--transport", choices=["db"], default="db",
                             help="Режим записи: db = прямой bulk_create (пока единственный)")
+        parser.add_argument("--degradation", action="store_true",
+                            help="Добавить монотонный дрейф к отказу (для предиктивных алертов)")
+        parser.add_argument("--degradation-rate", type=float, default=1.0,
+                            help="Сила деградации (множитель диапазона профиля)")
+        parser.add_argument("--degradation-start-frac", type=float, default=0.4,
+                            help="С какой доли ряда начинается дрейф (0..1)")
 
     def handle(self, *args, **opts):
         days = opts["days"]
@@ -105,7 +111,11 @@ class Command(BaseCommand):
 
                 mseed = abs(hash((base_seed, device.serial_number, metric.metric_type))) % (2**32)
                 gen = SignalGenerator(profiles[pname], rng=np.random.default_rng(mseed))
-                points = gen.generate(start, end, step_minutes=step, anomaly_rate=anomaly_rate)
+                points = gen.generate(
+                    start, end, step_minutes=step, anomaly_rate=anomaly_rate,
+                    degradation=opts["degradation"],
+                    degradation_rate=opts["degradation_rate"],
+                    degradation_start_frac=opts["degradation_start_frac"])
 
                 thresholds = list(AlertThreshold.objects.filter(metric=metric, is_active=True))
 
@@ -129,6 +139,7 @@ class Command(BaseCommand):
                                 **({"type": p.anomaly_type, "severity": p.anomaly_severity}
                                    if p.is_anomaly else {}),
                             },
+                            **({"degradation": True} if p.is_degradation else {}),
                         },
                     ))
                 Telemetry.objects.bulk_create(rows, batch_size=2000)

@@ -35,6 +35,7 @@ class GeneratedPoint:
     is_anomaly: bool = False
     anomaly_type: str | None = None
     anomaly_severity: str | None = None  # low | medium | high
+    is_degradation: bool = False         # точка на участке монотонного дрейфа к отказу
 
 
 @dataclass
@@ -175,8 +176,16 @@ class SignalGenerator:
         end: datetime,
         step_minutes: int = 10,
         anomaly_rate: float = 0.0,
+        degradation: bool = False,
+        degradation_rate: float = 1.0,
+        degradation_start_frac: float = 0.4,
     ) -> list[GeneratedPoint]:
-        """Строит ряд точек от start до end с шагом step_minutes."""
+        """Строит ряд точек от start до end с шагом step_minutes.
+
+        degradation=True добавляет монотонный дрейф к отказу (как C-MAPSS): со
+        второй части ряда значение линейно растёт, выходя за max_clip к концу.
+        Это тренд (ground-truth для предиктивного алерта), не точечная аномалия.
+        """
         step = timedelta(minutes=step_minutes)
         timestamps: list[datetime] = []
         t = start
@@ -186,6 +195,9 @@ class SignalGenerator:
 
         values = self._baseline_series(timestamps)
         labels = self._inject_anomalies(values, anomaly_rate)
+        degr_mask = self._apply_degradation(
+            values, degradation_rate, degradation_start_frac) if degradation \
+            else [False] * len(values)
 
         # Норму клиппим строго по профилю; аномалиям даём расширенный коридор —
         # заметные, но правдоподобные (иначе spike +8σ даёт абсурд вроде +96°C).
@@ -199,9 +211,10 @@ class SignalGenerator:
             anom_lo = anom_hi = None
 
         points: list[GeneratedPoint] = []
-        for dt, val, (atype, sev) in zip(timestamps, values, labels):
+        for dt, val, (atype, sev), is_degr in zip(timestamps, values, labels, degr_mask):
             v = float(val)
-            if lo is not None and hi is not None:
+            # деградирующие точки НЕ клиппим — тренд должен выйти за порог
+            if lo is not None and hi is not None and not is_degr:
                 if not atype:
                     v = max(lo, min(hi, v))
                 elif atype != "dropout":
@@ -213,6 +226,26 @@ class SignalGenerator:
                     is_anomaly=bool(atype),
                     anomaly_type=atype or None,
                     anomaly_severity=sev or None,
+                    is_degradation=bool(is_degr),
                 )
             )
         return points
+
+    def _apply_degradation(self, values: np.ndarray, rate: float,
+                           start_frac: float) -> list[bool]:
+        """Добавляет монотонный линейный дрейф со start_frac·n до конца ряда.
+
+        К концу значение поднимается на rate·(max_clip-min_clip) сверх диапазона
+        профиля, гарантированно выходя за max_clip — модель деградации оборудования.
+        Возвращает маску точек, затронутых дрейфом (ground-truth тренда).
+        """
+        n = len(values)
+        start = int(n * start_frac)
+        span = self.profile.get("max_clip", values.max()) - \
+            self.profile.get("min_clip", values.min())
+        peak = rate * span * 1.2   # к концу выходим на 120% диапазона за max_clip
+        ramp = np.zeros(n)
+        if start < n - 1:
+            ramp[start:] = np.linspace(0, peak, n - start)
+        values += ramp
+        return [i >= start for i in range(n)]

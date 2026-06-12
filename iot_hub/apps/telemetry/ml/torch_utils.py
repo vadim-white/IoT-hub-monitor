@@ -14,6 +14,9 @@ from torch import nn
 def set_torch_determinism(seed: int) -> None:
     torch.manual_seed(seed)
     torch.use_deterministic_algorithms(True, warn_only=True)
+    # ограничиваем число потоков: torch по умолчанию хватает все ядра (900%+ CPU),
+    # 6 потоков оставляют запас системе при приемлемой скорости обучения
+    torch.set_num_threads(6)
 
 
 def make_causal_windows(values: np.ndarray, window: int) -> tuple[np.ndarray, np.ndarray]:
