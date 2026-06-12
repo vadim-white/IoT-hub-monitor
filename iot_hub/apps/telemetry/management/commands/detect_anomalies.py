@@ -30,7 +30,7 @@ class Command(BaseCommand):
         parser.add_argument("--metric", default=None,
                             help="metric_type (по умолчанию — все метрики устройства)")
         parser.add_argument("--method", default="zscore",
-                            help="метод детекции из реестра: zscore, iforest")
+                            help="метод детекции из реестра: zscore, iforest, autoencoder")
         parser.add_argument("--window", type=int, default=24,
                             help="размер окна в точках (24 = 4ч при шаге 10 мин)")
         parser.add_argument("--threshold", type=float, default=3.0,
@@ -44,7 +44,16 @@ class Command(BaseCommand):
         parser.add_argument("--n-estimators", type=int, default=200,
                             help="iforest: число деревьев")
         parser.add_argument("--random-state", type=int, default=42,
-                            help="iforest: seed для воспроизводимости")
+                            help="iforest/autoencoder: seed для воспроизводимости")
+        # параметры автоэнкодера (игнорируются другими методами)
+        parser.add_argument("--epochs", type=int, default=150,
+                            help="autoencoder: число эпох обучения")
+        parser.add_argument("--latent-dim", type=int, default=8,
+                            help="autoencoder: размер скрытого слоя (bottleneck)")
+        parser.add_argument("--lr", type=float, default=1e-3,
+                            help="autoencoder: learning rate")
+        parser.add_argument("--threshold-percentile", type=float, default=98.0,
+                            help="autoencoder: перцентиль ошибки реконструкции для порога")
 
     def handle(self, *args, **opts):
         qs = Device.objects.prefetch_related("metrics")
@@ -71,6 +80,16 @@ class Command(BaseCommand):
                     params.update(
                         contamination=opts["contamination"],
                         n_estimators=opts["n_estimators"],
+                        random_state=opts["random_state"],
+                    )
+                elif opts["method"] == "autoencoder":
+                    # AE калибрует порог по перцентилю; дефолт --threshold 3.0 не подходит
+                    params.pop("threshold", None)
+                    params.update(
+                        epochs=opts["epochs"],
+                        latent_dim=opts["latent_dim"],
+                        lr=opts["lr"],
+                        threshold_percentile=opts["threshold_percentile"],
                         random_state=opts["random_state"],
                     )
                 detector = build_detector(opts["method"], **params)

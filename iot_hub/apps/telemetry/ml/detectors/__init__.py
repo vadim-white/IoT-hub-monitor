@@ -8,8 +8,15 @@ from .iforest import IsolationForestDetector
 DETECTOR_REGISTRY: dict[str, type[AnomalyDetector]] = {
     "zscore": ZScoreDetector,
     "iforest": IsolationForestDetector,
-    # "autoencoder": AutoencoderDetector,   # инкремент 3 (torch)
 }
+
+# autoencoder требует torch — регистрируем только если он установлен
+# (в окружениях без torch, напр. .venv-analysis, метод просто недоступен)
+try:
+    from .autoencoder import AutoencoderDetector
+    DETECTOR_REGISTRY["autoencoder"] = AutoencoderDetector
+except ImportError:
+    pass
 
 
 def build_detector(method: str, **params) -> AnomalyDetector:

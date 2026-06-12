@@ -83,3 +83,14 @@ class TestDetectAnomaliesCommand(TestCase):
         text = out.getvalue()
         assert "method=iforest" in text
         assert "precision" in text
+
+    def test_autoencoder_method_runs(self):
+        """Метод autoencoder отрабатывает, AE-параметры пробрасываются."""
+        pytest.importorskip("torch")
+        out = StringIO()
+        call_command("detect_anomalies", "--device", "DEV001", "--metric", "temperature",
+                     "--method", "autoencoder", "--window", "24", "--epochs", "5",
+                     "--latent-dim", "4", stdout=out)
+        text = out.getvalue()
+        assert "method=autoencoder" in text
+        assert "precision" in text
