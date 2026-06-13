@@ -169,6 +169,63 @@ def main():
         except Exception as e:
             logger.warning(f"Could not refresh last_seen_at: {e}")
 
+        # ── Реальный ML-инференс (Фаза 4 инкр.3) ──────────────────────────────
+        # Раньше ML-секцию на Render показывала статичная заглушка ML_DEMO в
+        # seed_alerts.py. Теперь считаем НАСТОЯЩИЕ ML-алерты по живой телеметрии,
+        # по ОДНОМУ temperature-устройству на каждого из 4 демо-юзеров (RBAC: юзер
+        # видит только свои алерты → витрина ML нужна у каждого, не только у admin).
+        # На каждое устройство:
+        # 1) гарантируем порог AlertThreshold upper=51.8 (seed создаёт пороги
+        #    СЛУЧАЙНО — на конкретном устройстве его может не быть, тогда forecast
+        #    не сработает; get_or_create делает forecast-алерт детерминированным);
+        # 2) генерируем наблюдаемые аномалии + деградацию (реальный датасет «чистый»);
+        # 3) IsolationForest (w72/c0.01 — лучший режим из эксп.02) → ml_anomaly;
+        # 4) Holt-Winters → ml_forecast (прогноз пересекает порог 51.8°C).
+        # Лёгкие модели обучаются здесь же из managed Postgres (секунды), веса не
+        # возим (ml/models/ в .gitignore). Каждый шаг best-effort: сбой не валит деплой.
+        # ВАЖНО: только под seed_demo (Render/FORCE_SEED_DEMO) — локально пропуск.
+        # См. docs/plans/phase4/03_render_inference.md.
+        # degradation-rate 2.9 / start-frac 0.7 / seed 7: хвост подбирается к порогу
+        # 51.8°C (50+1.8 из шаблона seed_alerts), прогноз Holt-Winters его пересекает.
+        # rate 2.9 (не 2.65) — чтобы ВСЕ 4 устройства с разными energydata-профилями
+        # гарантированно пересекали порог. window 72 + contamination 0.01 — лучший
+        # режим IF из docs/experiments/02 (precision ~1.0, FAR ~0). --tail 2000: зона
+        # деградации (хвост ~30%) глушит точечные выбросы, и у разных профилей они на
+        # разной глубине (до ~1700 точек) → tail 2000 (~2 нед) ловит аномалию у всех.
+        ml_devices = ["TEMP-001", "TEMP-004", "TEMP-006", "TEMP-008"]
+
+        # (1) гарантируем порог 51.8°C на temperature каждого ML-устройства —
+        # иначе forecast-алерт зависит от случайной выборки seed_alerts.
+        ensure_thresholds = (
+            "python manage.py shell -c "
+            "\"from iot_hub.apps.devices.models import Device, AlertThreshold; "
+            "[AlertThreshold.objects.get_or_create("
+            "metric=Device.objects.get(serial_number=sn).metrics.get(metric_type='temperature'), "
+            "severity='info', upper_bound=51.8, defaults={'is_active': True}) "
+            "for sn in ['TEMP-001','TEMP-004','TEMP-006','TEMP-008']]\""
+        )
+        run_command(ensure_thresholds, "ML: гарантия порога 51.8°C на ML-устройствах")
+
+        # (2-4) генерация → детекция → прогноз по каждому устройству
+        for sn in ml_devices:
+            run_command(
+                f"python manage.py generate_telemetry --devices {sn} "
+                "--anomaly-rate 0.05 --degradation --degradation-rate 2.9 "
+                "--degradation-start-frac 0.7 --seed 7",
+                f"ML[{sn}]: генерация аномалий+деградации",
+            )
+            run_command(
+                f"python manage.py detect_anomalies --device {sn} "
+                "--metric temperature --method iforest --window 72 "
+                "--contamination 0.01 --threshold 0.0 --tail 2000 --write-alerts",
+                f"ML[{sn}]: детекция (IsolationForest) → ml_anomaly",
+            )
+            run_command(
+                f"python manage.py forecast_telemetry --device {sn} "
+                "--metric temperature --method holtwinters --write-alerts",
+                f"ML[{sn}]: прогноз (Holt-Winters) → ml_forecast",
+            )
+
     # Start gunicorn
     logger.info("Starting gunicorn...")
     cmd = (
