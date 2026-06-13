@@ -14,10 +14,11 @@ import numpy as np
 
 from ..base import AnomalyDetector, DetectionResult
 from ..dataset import TimeSeries
+from ..persistence import ModelPersistenceMixin
 
 
 @dataclass
-class ZScoreDetector(AnomalyDetector):
+class ZScoreDetector(ModelPersistenceMixin, AnomalyDetector):
     """Скользящий z-score. Полностью детерминирован (нет ГСЧ).
 
     window    — точек в окне. При шаге 10 мин: 24 = 4 часа, 144 = сутки
@@ -70,3 +71,10 @@ class ZScoreDetector(AnomalyDetector):
                 "params": {"threshold": self.threshold, "min_std": self.min_std},
             },
         )
+
+    # --- персистентность: детектор stateless, веса хранить нечего ---
+    def _dump_state(self, stem) -> None:
+        """Состояния нет (онлайновый метод) — артефакт = только манифест."""
+
+    def _load_state(self, stem, manifest) -> None:
+        """Восстанавливать нечего; sha уже сверён в ModelPersistenceMixin.load."""

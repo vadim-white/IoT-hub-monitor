@@ -12,10 +12,11 @@ import numpy as np
 
 from ..dataset import TimeSeries
 from ..forecast_base import Forecaster, ForecastResult, future_timestamps, infer_step
+from ..persistence import ModelPersistenceMixin
 
 
 @dataclass
-class HoltWintersForecaster(Forecaster):
+class HoltWintersForecaster(ModelPersistenceMixin, Forecaster):
     seasonal_periods: int = 144
     trend: str = "add"
     seasonal: str = "add"
@@ -53,3 +54,24 @@ class HoltWintersForecaster(Forecaster):
             meta={"method": self.name, "seasonal_periods": self.seasonal_periods,
                   "params": {"trend": self.trend, "seasonal": self.seasonal}},
         )
+
+    # --- персистентность: statsmodels-результат + скаляры через joblib ---
+    def _dump_state(self, stem) -> None:
+        if self._fit is None:
+            raise ValueError("Нечего сохранять: вызовите fit() перед save()")
+        import joblib
+
+        joblib.dump(
+            {"fit": self._fit, "resid_std": self._resid_std,
+             "last_ts": self._last_ts, "step": self._step},
+            f"{stem}.joblib",
+        )
+
+    def _load_state(self, stem, manifest) -> None:
+        import joblib
+
+        state = joblib.load(f"{stem}.joblib")
+        self._fit = state["fit"]
+        self._resid_std = state["resid_std"]
+        self._last_ts = state["last_ts"]
+        self._step = state["step"]

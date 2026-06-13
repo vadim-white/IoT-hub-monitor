@@ -16,6 +16,7 @@ from django.utils import timezone
 
 from iot_hub.apps.devices.models import Device
 from iot_hub.apps.telemetry.ml.detectors import build_detector
+from iot_hub.apps.telemetry.ml.cli_params import detector_params
 from iot_hub.apps.telemetry.ml.loader import load_series
 from iot_hub.apps.telemetry.ml.evaluation import (
     point_metrics, per_type_recall, detection_latency,
@@ -65,6 +66,11 @@ class Command(BaseCommand):
                             help="autoencoder: learning rate")
         parser.add_argument("--threshold-percentile", type=float, default=98.0,
                             help="autoencoder: перцентиль ошибки реконструкции для порога")
+        # кэш весов (Фаза 4): грузить обученную модель вместо переобучения
+        parser.add_argument("--use-cache", action="store_true",
+                            help="загрузить веса из ml/models/ (при miss/несовпадении — fit)")
+        parser.add_argument("--save-cache", action="store_true",
+                            help="--use-cache: пересохранить веса после обучения на miss")
 
     def handle(self, *args, **opts):
         qs = Device.objects.prefetch_related("metrics")
@@ -87,25 +93,10 @@ class Command(BaseCommand):
                 if len(series) <= opts["window"]:
                     continue
 
-                params = {"window": opts["window"], "threshold": opts["threshold"]}
-                if opts["method"] == "iforest":
-                    params.update(
-                        contamination=opts["contamination"],
-                        n_estimators=opts["n_estimators"],
-                        random_state=opts["random_state"],
-                    )
-                elif opts["method"] == "autoencoder":
-                    # AE калибрует порог по перцентилю; дефолт --threshold 3.0 не подходит
-                    params.pop("threshold", None)
-                    params.update(
-                        epochs=opts["epochs"],
-                        latent_dim=opts["latent_dim"],
-                        lr=opts["lr"],
-                        threshold_percentile=opts["threshold_percentile"],
-                        random_state=opts["random_state"],
-                    )
+                params = detector_params(opts["method"], opts)
                 detector = build_detector(opts["method"], **params)
-                result = detector.fit(series).predict(series)
+                detector = self._fit_or_load(detector, series, device, metric, opts)
+                result = detector.predict(series)
 
                 pm = point_metrics(series.labels, result.predictions, result.warmup_mask)
                 ptr = per_type_recall(series, result.predictions, result.warmup_mask)
@@ -131,6 +122,31 @@ class Command(BaseCommand):
             self._report_json(results, agg)
         else:
             self._report_text(results, agg)
+
+    def _fit_or_load(self, detector, series, device, metric, opts):
+        """С --use-cache грузит веса из ml/models/; при miss/несовпадении — fit.
+
+        Без флага поведение прежнее (всегда fit). Возвращает готовый детектор.
+        """
+        if not opts["use_cache"]:
+            return detector.fit(series)
+
+        from iot_hub.apps.telemetry.ml.persistence import (
+            CacheMismatchError, model_key,
+        )
+
+        stem = model_key(detector.name, device.serial_number, metric.metric_type)
+        try:
+            detector.load(stem)
+            self.stdout.write(self.style.SUCCESS(f"  [cache] загружено: {stem.name}"))
+            return detector
+        except (FileNotFoundError, CacheMismatchError) as e:
+            self.stdout.write(f"  [cache] miss ({type(e).__name__}) → обучение")
+            detector.fit(series)
+            if opts["save_cache"]:
+                detector.save(stem)
+                self.stdout.write(f"  [cache] сохранено: {stem.name}")
+            return detector
 
     def _write_alerts(self, device, metric, series, result, opts):
         """Создаёт ML-алерт по самой сильной аномалии в свежем хвосте ряда.

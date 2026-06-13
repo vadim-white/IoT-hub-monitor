@@ -18,10 +18,11 @@ from sklearn.ensemble import IsolationForest
 from ..base import AnomalyDetector, DetectionResult
 from ..dataset import TimeSeries
 from ..features import build_features, FEATURE_NAMES
+from ..persistence import ModelPersistenceMixin
 
 
 @dataclass
-class IsolationForestDetector(AnomalyDetector):
+class IsolationForestDetector(ModelPersistenceMixin, AnomalyDetector):
     """window — окно для признаков; threshold — порог по score (=-decision_function).
 
     threshold=0.0 воспроизводит штатный sklearn-predict при данной contamination;
@@ -74,3 +75,16 @@ class IsolationForestDetector(AnomalyDetector):
                 },
             },
         )
+
+    # --- персистентность: sklearn-модель через joblib ---
+    def _dump_state(self, stem) -> None:
+        if self._model is None:
+            raise ValueError("Нечего сохранять: вызовите fit() перед save()")
+        import joblib  # зависимость scikit-learn; импорт локальный
+
+        joblib.dump(self._model, f"{stem}.joblib")
+
+    def _load_state(self, stem, manifest) -> None:
+        import joblib
+
+        self._model = joblib.load(f"{stem}.joblib")

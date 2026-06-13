@@ -94,3 +94,46 @@ class TestDetectAnomaliesCommand(TestCase):
         text = out.getvalue()
         assert "method=autoencoder" in text
         assert "precision" in text
+
+    def test_train_models_then_use_cache_loads(self, tmp_path=None):
+        """train_models сохраняет артефакт; detect_anomalies --use-cache его грузит,
+        а не переобучает (логирует [cache] загружено)."""
+        pytest.importorskip("sklearn")
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+        from iot_hub.apps.telemetry.ml import persistence
+
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(persistence, "ML_MODELS_DIR", Path(d)):
+                # обучаем и сохраняем
+                train_out = StringIO()
+                call_command("train_models", "--device", "DEV001",
+                             "--metric", "temperature", "--method", "iforest",
+                             "--window", "24", stdout=train_out)
+                assert "Обучено и сохранено моделей: 1" in train_out.getvalue()
+                assert (Path(d) / "iforest__DEV001__temperature.manifest.json").exists()
+
+                # повторный детект с --use-cache грузит веса
+                det_out = StringIO()
+                call_command("detect_anomalies", "--device", "DEV001",
+                             "--metric", "temperature", "--method", "iforest",
+                             "--window", "24", "--use-cache", stdout=det_out)
+                assert "[cache] загружено" in det_out.getvalue()
+
+    def test_use_cache_miss_falls_back_to_fit(self):
+        """Без сохранённого артефакта --use-cache не падает, а обучает (miss)."""
+        pytest.importorskip("sklearn")
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+        from iot_hub.apps.telemetry.ml import persistence
+
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(persistence, "ML_MODELS_DIR", Path(d)):
+                out = StringIO()
+                call_command("detect_anomalies", "--device", "DEV001",
+                             "--metric", "temperature", "--method", "iforest",
+                             "--window", "24", "--use-cache", stdout=out)
+                assert "[cache] miss" in out.getvalue()
+                assert "precision" in out.getvalue()

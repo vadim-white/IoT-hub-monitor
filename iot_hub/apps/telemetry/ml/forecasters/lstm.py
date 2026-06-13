@@ -12,10 +12,29 @@ import numpy as np
 
 from ..dataset import TimeSeries
 from ..forecast_base import Forecaster, ForecastResult, future_timestamps, infer_step
+from ..persistence import ModelPersistenceMixin
+
+
+def _build_net(hidden: int, horizon: int):
+    """Сеть LSTM→Linear на уровне модуля — чтобы её можно было реконструировать
+    при load (state_dict требует тот же класс). torch импортируется локально."""
+    from torch import nn
+
+    class Net(nn.Module):
+        def __init__(self, hidden, horizon):
+            super().__init__()
+            self.lstm = nn.LSTM(1, hidden, batch_first=True)
+            self.head = nn.Linear(hidden, horizon)
+
+        def forward(self, x):
+            out, _ = self.lstm(x)
+            return self.head(out[:, -1, :])
+
+    return Net(hidden, horizon)
 
 
 @dataclass
-class LSTMForecaster(Forecaster):
+class LSTMForecaster(ModelPersistenceMixin, Forecaster):
     window: int = 144
     epochs: int = 100
     lr: float = 1e-3
@@ -32,7 +51,6 @@ class LSTMForecaster(Forecaster):
 
     def fit(self, series: TimeSeries) -> "LSTMForecaster":
         import torch
-        from torch import nn
         from ..torch_utils import set_torch_determinism
 
         set_torch_determinism(self.random_state)
@@ -46,11 +64,15 @@ class LSTMForecaster(Forecaster):
         # т.к. выходной слой зависит от horizon (direct multi-step)
         self._yn = yn
         self._torch = torch
-        self._nn = nn
         return self
 
     def _build_and_train(self, horizon: int):
-        torch, nn = self._torch, self._nn
+        from ..torch_utils import set_torch_determinism
+
+        torch = self._torch
+        # seed здесь, а не только в fit: после load() (без fit) ленивое обучение
+        # сети должно быть так же детерминировано.
+        set_torch_determinism(self.random_state)
         yn, w = self._yn, self.window
         n = len(yn)
         # окна (X) → следующие horizon точек (Y)
@@ -65,19 +87,9 @@ class LSTMForecaster(Forecaster):
         X = torch.tensor(np.array(X), dtype=torch.float32).unsqueeze(-1)  # (N, w, 1)
         Y = torch.tensor(np.array(Y), dtype=torch.float32)
 
-        class Net(nn.Module):
-            def __init__(self, hidden, horizon):
-                super().__init__()
-                self.lstm = nn.LSTM(1, hidden, batch_first=True)
-                self.head = nn.Linear(hidden, horizon)
-
-            def forward(self, x):
-                out, _ = self.lstm(x)
-                return self.head(out[:, -1, :])
-
-        model = Net(self.hidden, horizon)
+        model = _build_net(self.hidden, horizon)
         opt = torch.optim.Adam(model.parameters(), lr=self.lr)
-        loss_fn = nn.MSELoss()
+        loss_fn = torch.nn.MSELoss()
         model.train()
         for _ in range(self.epochs):
             opt.zero_grad()
@@ -108,3 +120,39 @@ class LSTMForecaster(Forecaster):
                   "params": {"window": self.window, "epochs": self.epochs,
                              "hidden": self.hidden, "random_state": self.random_state}},
         )
+
+    # --- персистентность: pre-fit состояние (.npz) + опц. веса сети (.pt) ---
+    # Особый случай: _model строится лениво на первом forecast (горизонт неизвестен
+    # на fit). Сохраняем то, что есть; если сеть уже построена — кладём и её веса.
+    def _dump_state(self, stem) -> None:
+        if self._yn is None:
+            raise ValueError("Нечего сохранять: вызовите fit() перед save()")
+        has_model = self._model is not None
+        np.savez(
+            f"{stem}.npz",
+            mean=self._mean, std=self._std, tail=self._tail, yn=self._yn,
+            last_ts=self._last_ts, step=self._step,
+            horizon=(self._horizon if has_model else -1),
+            has_model=has_model,
+        )
+        if has_model:
+            import torch
+
+            torch.save(self._model.state_dict(), f"{stem}.pt")
+
+    def _load_state(self, stem, manifest) -> None:
+        import torch
+
+        self._torch = torch  # нужен forecast(); fit() здесь не вызывался
+        z = np.load(f"{stem}.npz", allow_pickle=False)
+        self._mean = float(z["mean"])
+        self._std = float(z["std"])
+        self._tail = z["tail"]
+        self._yn = z["yn"]
+        self._last_ts = z["last_ts"][()]
+        self._step = z["step"][()]
+        if bool(z["has_model"]):
+            self._horizon = int(z["horizon"])
+            self._model = _build_net(self.hidden, self._horizon)
+            self._model.load_state_dict(torch.load(f"{stem}.pt"))
+            self._model.eval()

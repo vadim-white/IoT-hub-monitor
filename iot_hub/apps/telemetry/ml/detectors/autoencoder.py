@@ -17,13 +17,14 @@ import numpy as np
 
 from ..base import AnomalyDetector, DetectionResult
 from ..dataset import TimeSeries
+from ..persistence import ModelPersistenceMixin
 from ..torch_utils import (
     set_torch_determinism, make_causal_windows, global_standardize, MLPAutoencoder,
 )
 
 
 @dataclass
-class AutoencoderDetector(AnomalyDetector):
+class AutoencoderDetector(ModelPersistenceMixin, AnomalyDetector):
     """threshold=None → калибровка порога по перцентилю ошибки на train."""
     window: int = 72
     threshold: float | None = None
@@ -109,3 +110,24 @@ class AutoencoderDetector(AnomalyDetector):
                 },
             },
         )
+
+    # --- персистентность: state_dict (.pt) + нормировка/порог (.npz) ---
+    def _dump_state(self, stem) -> None:
+        if self._model is None:
+            raise ValueError("Нечего сохранять: вызовите fit() перед save()")
+        import torch
+
+        torch.save(self._model.state_dict(), f"{stem}.pt")
+        mean, std = self._stats
+        np.savez(f"{stem}.npz", mean=mean, std=std, threshold=self._threshold)
+
+    def _load_state(self, stem, manifest) -> None:
+        import torch
+
+        z = np.load(f"{stem}.npz", allow_pickle=False)
+        self._stats = (float(z["mean"]), float(z["std"]))
+        self._threshold = float(z["threshold"])
+        # реконструкция архитектуры по гиперпараметрам (sha уже сверён)
+        self._model = MLPAutoencoder(self.window, self.latent_dim)
+        self._model.load_state_dict(torch.load(f"{stem}.pt"))
+        self._model.eval()

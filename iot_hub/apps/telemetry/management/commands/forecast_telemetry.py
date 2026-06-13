@@ -14,6 +14,7 @@ from django.core.management.base import BaseCommand
 from iot_hub.apps.devices.models import Device
 from iot_hub.apps.telemetry.ml.loader import load_series
 from iot_hub.apps.telemetry.ml.forecasters import build_forecaster
+from iot_hub.apps.telemetry.ml.cli_params import forecaster_params
 from iot_hub.apps.telemetry.ml.forecast_evaluation import rolling_origin_backtest
 
 
@@ -46,6 +47,12 @@ class Command(BaseCommand):
         parser.add_argument("--epochs", type=int, default=100)
         parser.add_argument("--lr", type=float, default=1e-3)
         parser.add_argument("--hidden", type=int, default=32)
+        # кэш весов (Фаза 4): применяется к финальной модели для --write-alerts,
+        # backtest НЕ кэшируется (каждый origin обучается заново — иначе ложь в метриках)
+        parser.add_argument("--use-cache", action="store_true",
+                            help="--write-alerts: грузить веса финальной модели из ml/models/")
+        parser.add_argument("--save-cache", action="store_true",
+                            help="--use-cache: пересохранить веса после обучения на miss")
 
     def handle(self, *args, **opts):
         qs = Device.objects.prefetch_related("metrics")
@@ -94,18 +101,31 @@ class Command(BaseCommand):
             self._report_text(results, opts)
 
     def _method_params(self, opts) -> dict:
-        m = opts["method"]
-        if m == "naive":
-            return {"seasonal_periods": opts["seasonal_periods"]}
-        if m == "holtwinters":
-            return {"seasonal_periods": opts["seasonal_periods"]}
-        if m == "lstm":
-            return {
-                "window": opts["window"], "epochs": opts["epochs"],
-                "lr": opts["lr"], "hidden": opts["hidden"],
-                "random_state": opts["random_state"],
-            }
-        return {}
+        return forecaster_params(opts["method"], opts)
+
+    def _final_model(self, factory, series, device, metric, opts):
+        """Финальная модель для предиктивного алерта: с --use-cache грузит веса,
+        иначе обучает на всём ряде. Backtest сюда не относится — он всегда переобучает."""
+        model = factory()
+        if not opts["use_cache"]:
+            return model.fit(series)
+
+        from iot_hub.apps.telemetry.ml.persistence import (
+            CacheMismatchError, model_key,
+        )
+
+        stem = model_key(model.name, device.serial_number, metric.metric_type)
+        try:
+            model.load(stem)
+            self.stdout.write(self.style.SUCCESS(f"  [cache] загружено: {stem.name}"))
+            return model
+        except (FileNotFoundError, CacheMismatchError) as e:
+            self.stdout.write(f"  [cache] miss ({type(e).__name__}) → обучение")
+            model.fit(series)
+            if opts["save_cache"]:
+                model.save(stem)
+                self.stdout.write(f"  [cache] сохранено: {stem.name}")
+            return model
 
     def _write_forecast_alert(self, device, metric, series, factory, opts):
         """Создаёт предиктивный алерт, если прогноз пересекает активный порог.
@@ -132,7 +152,8 @@ class Command(BaseCommand):
             return 0
 
         step_min = infer_step(series.timestamps).astype("timedelta64[s]").astype(float) / 60.0
-        fc = factory().fit(series).forecast(opts["horizon"])
+        model = self._final_model(factory, series, device, metric, opts)
+        fc = model.forecast(opts["horizon"])
         crossing = predict_threshold_crossing(fc, lower_bound, upper_bound, step_min)
         if not crossing.will_cross:
             return 0

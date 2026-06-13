@@ -33,3 +33,6 @@ datasets/*
 
 # venv для аналитики/extractor (pandas+numpy, не коммитим)
 .venv-analysis/
+
+# Обученные веса ML-моделей (бинарь, переобучаемы; Фаза 4 — train_models)
+iot_hub/apps/telemetry/ml/models/
