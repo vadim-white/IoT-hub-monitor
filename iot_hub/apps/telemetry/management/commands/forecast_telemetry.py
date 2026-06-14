@@ -76,24 +76,36 @@ class Command(BaseCommand):
 
                 factory = lambda: build_forecaster(
                     opts["method"], **self._method_params(opts))
-                res = rolling_origin_backtest(
-                    factory, series, horizon=opts["horizon"],
-                    initial_train=opts["initial_train"], step=opts["step"],
-                    max_origins=opts["max_origins"])
-                if res["n_origins"]:
-                    results.append((device, metric, res))
+                # inference-only методы (lstm_lf_resid_onnx) не умеют fit на каждом origin —
+                # backtest для них неприменим; работают только в --use-cache (load+forecast).
+                if getattr(factory(), "inference_only", False):
+                    if not opts["use_cache"]:
+                        self.stderr.write(self.style.ERROR(
+                            f"Метод '{opts['method']}' — только инференс: требуется "
+                            "--use-cache (backtest невозможен, нужен готовый артефакт)."))
+                        return
+                else:
+                    res = rolling_origin_backtest(
+                        factory, series, horizon=opts["horizon"],
+                        initial_train=opts["initial_train"], step=opts["step"],
+                        max_origins=opts["max_origins"])
+                    if res["n_origins"]:
+                        results.append((device, metric, res))
 
                 if opts["write_alerts"]:
                     alerts_created += self._write_forecast_alert(
                         device, metric, series, factory, opts)
 
-        if not results:
-            self.stderr.write(self.style.ERROR("Нет рядов достаточной длины"))
-            return
-
         if opts["write_alerts"]:
             self.stdout.write(self.style.SUCCESS(
                 f"\nСоздано предиктивных алертов: {alerts_created}"))
+
+        # inference-only методы не дают backtest-результатов (см. выше) — их вывод =
+        # только алерты. Пустой results для них норма, не ошибка «нет рядов».
+        if not results:
+            if not opts["write_alerts"]:
+                self.stderr.write(self.style.ERROR("Нет рядов достаточной длины"))
+            return
 
         if opts["report"] == "json":
             self._report_json(results, opts)

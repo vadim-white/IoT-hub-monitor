@@ -170,3 +170,30 @@ class LSTMLevelFixResidualForecaster(ModelPersistenceMixin, Forecaster):
             self._model = build_lstm_seq2seq(self.hidden, self._horizon)
             self._model.load_state_dict(torch.load(f"{stem}.pt", weights_only=True))
             self._model.eval()
+
+    # --- ONNX-экспорт (Фаза 4, инкр. 5): сеть остатка → <stem>.onnx ---
+    # Экспортируем ТОЛЬКО LSTM-сеть приращений остатка. HW и скаляры нормировки уже
+    # лежат в <stem>_hw.joblib / <stem>.npz (их пишет save()); боевой ONNX-инференсер
+    # (LSTMLfResidOnnxForecaster) собирает прогноз из всех трёх артефактов без torch.
+    # Горизонт зашит в выходной слой сети build_lstm_seq2seq → граф фиксирован под
+    # self._horizon. forecast(H) до экспорта обязателен (иначе _model не построена).
+    def export_onnx(self, stem, opset: int = 17) -> str:
+        if self._model is None:
+            raise ValueError(
+                "Сеть остатка не построена: вызови forecast(horizon) до export_onnx() "
+                "(горизонт зашит в граф). Для коротких рядов (только HW) ONNX не нужен.")
+        import torch
+        from pathlib import Path
+
+        path = f"{Path(stem)}.onnx"
+        # Фиксированный batch=1: инференс всегда на ОДНОМ окне (хвост ряда). Динамический
+        # batch для LSTM в ONNX чреват (torch предупреждает: переменный batch+LSTM может
+        # дать неверный вывод без явных h0/c0). Нам N>1 не нужен → граф под batch=1.
+        dummy = torch.zeros(1, self.window, 1, dtype=torch.float32)
+        self._model.eval()
+        torch.onnx.export(
+            self._model, dummy, path,
+            input_names=["window"], output_names=["resid_incr"],
+            opset_version=opset,
+        )
+        return path

@@ -39,6 +39,11 @@ class ForecastResult:
 class Forecaster(ABC):
     """Интерфейс прогнозирования. Реализуют naive / holtwinters / lstm."""
     name: str = "base"
+    # True — модель умеет только инференс из готового артефакта (load+forecast), но не
+    # обучение с нуля (fit). Такие методы пропускают rolling-origin backtest (он
+    # переобучает на каждом origin) и работают только в --use-cache режиме. Пример:
+    # lstm_lf_resid_onnx — боевой ONNX-инференс без torch.
+    inference_only: bool = False
 
     @abstractmethod
     def fit(self, series: TimeSeries) -> "Forecaster":

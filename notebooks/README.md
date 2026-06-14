@@ -61,8 +61,13 @@ python manage.py detect_anomalies \
   источник, что у `train_models`/`detect_anomalies`. Так sha манифеста совпадает и
   `--use-cache` принимает веса без `CacheMismatchError`. Меняете гиперпараметр в ноутбуке —
   зовите `--use-cache` с теми же значениями.
-- **Что коммитим.** Ноутбук и README — в репо. Веса (`ml/models/`) и выгрузки
-  (`*.csv`) — нет (gitignore): данные/бинарь приходят по запросу, не версионируются.
+- **ONNX-инференс (инкр.5).** Для `lstm_lf_resid` ноутбук кроме `.pt` пишет рядом `.onnx`
+  (`model.export_onnx(stem)` после `save`). Боевой прогноз идёт методом `lstm_lf_resid_onnx`
+  через `onnxruntime` — **без torch**, одинаково на любом железе (GPU-веса = CPU-вывод).
+  Горизонт (`HORIZON=36`) зашит в граф: экспорт и `forecast_telemetry --horizon` должны
+  совпадать. На проде без Colab `.onnx` дописывается командой `export_onnx_models` из `.pt`.
+- **Что коммитим.** Ноутбук и README — в репо. Веса (`ml/models/`: `.pt`/`.npz`/`.onnx`/
+  `_hw.joblib`) и выгрузки (`*.csv`) — нет (gitignore): данные/бинарь приходят по запросу.
 
 ---
 

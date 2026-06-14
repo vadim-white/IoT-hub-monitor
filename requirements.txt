@@ -22,3 +22,8 @@ numpy==1.26.3
 scikit-learn==1.4.2
 torch==2.2.2
 statsmodels==0.14.2
+# Боевой ML-инференс LSTM без torch (Фаза 4, инкр. 5). 1.17.x совместим с numpy 1.26.
+onnxruntime==1.17.3
+# onnx нужен ТОЛЬКО для экспорта .pt→.onnx (torch.onnx.export), как torch — train-time.
+# Боевой инференс его не требует (хватает onnxruntime).
+onnx==1.16.0

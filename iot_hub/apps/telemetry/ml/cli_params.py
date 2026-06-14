@@ -48,9 +48,10 @@ def forecaster_params(method: str, opts: dict) -> dict:
             "lr": opts["lr"], "hidden": opts["hidden"],
             "random_state": opts["random_state"],
         }
-    if method == "lstm_lf_resid":
+    if method in ("lstm_lf_resid", "lstm_lf_resid_onnx"):
         # ВСЕ гиперпараметры фиксированы (включая random_state) — НЕ из общих CLI-флагов.
         # Это «модель победителя»: полностью детерминирована, sha артефакта стабилен между
         # Colab-обучением и локальным --use-cache независимо от --window/--epochs/--random-state.
+        # ONNX-инференсер делит артефакт с торч-классом → те же дефолты (sha совпадает).
         return dict(LSTM_LF_RESID_DEFAULTS)
     return {}

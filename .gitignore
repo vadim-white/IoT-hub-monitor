@@ -54,6 +54,8 @@ lstm_train.csv
 
 # Обученные веса ML-моделей (бинарь, переобучаемы; Фаза 4 — train_models)
 iot_hub/apps/telemetry/ml/models/
+# Архив весов, скачанный из Colab (распаковывается в models/, в репо не нужен)
+ml_models.zip
 
 # Выгрузки телеметрии для обучения в Colab (Фаза 4 — export_training_data).
 training_data.csv

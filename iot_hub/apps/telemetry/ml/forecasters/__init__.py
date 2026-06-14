@@ -32,6 +32,14 @@ try:
 except ImportError:
     pass
 
+# lstm_lf_resid_onnx — боевой инференс без torch (onnxruntime + statsmodels для HW).
+# Доступен на проде, где torch не нужен; обучение/экспорт .onnx — у lstm_lf_resid.
+try:
+    from .lstm_lf_resid_onnx import LSTMLfResidOnnxForecaster
+    FORECASTER_REGISTRY["lstm_lf_resid_onnx"] = LSTMLfResidOnnxForecaster
+except ImportError:
+    pass
+
 
 def build_forecaster(method: str, **params) -> Forecaster:
     if method not in FORECASTER_REGISTRY:
