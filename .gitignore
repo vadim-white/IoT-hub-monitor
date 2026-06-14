@@ -52,10 +52,23 @@ ae_train.csv
 lstm_train.csv
 
 
-# Обученные веса ML-моделей (бинарь, переобучаемы; Фаза 4 — train_models)
-iot_hub/apps/telemetry/ml/models/
+# Обученные веса ML-моделей (бинарь, переобучаемы; Фаза 4 — train_models).
+# Игнорируем СОДЕРЖИМОЕ папки (models/*), а не саму папку — иначе !-исключения ниже
+# не работают (git не заходит внутрь полностью игнорированной директории).
+iot_hub/apps/telemetry/ml/models/*
 # Архив весов, скачанный из Colab (распаковывается в models/, в репо не нужен)
 ml_models.zip
+
+# ИСКЛЮЧЕНИЕ (Фаза 4 инкр.6–7): боевые артефакты lstm_lf_resid для 4 ML-устройств
+# Render (TEMP-001/004/006/008) коммитим в репо — иначе .onnx не доезжает на Render
+# (эфемерный диск, стирается при редеплое). .pt НЕ включаем: на проде инференс через
+# ONNX без torch; .pt нужен только локально для переэкспорта/переобучения.
+!iot_hub/apps/telemetry/ml/models/lstm_lf_resid__TEMP-001__temperature*
+!iot_hub/apps/telemetry/ml/models/lstm_lf_resid__TEMP-004__temperature*
+!iot_hub/apps/telemetry/ml/models/lstm_lf_resid__TEMP-006__temperature*
+!iot_hub/apps/telemetry/ml/models/lstm_lf_resid__TEMP-008__temperature*
+# .pt всё равно исключаем (даже для 4 устройств) — на проде не нужен
+iot_hub/apps/telemetry/ml/models/*.pt
 
 # Выгрузки телеметрии для обучения в Colab (Фаза 4 — export_training_data).
 training_data.csv

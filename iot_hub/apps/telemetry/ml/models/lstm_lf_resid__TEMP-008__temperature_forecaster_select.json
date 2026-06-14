@@ -1,0 +1,9 @@
+{
+  "best_method": "lstm_lf_resid",
+  "mae_hw": 0.2179,
+  "mae_lstm": 0.2064,
+  "holdout": 36,
+  "horizon": 36,
+  "eval": "holdout_ready_weights",
+  "evaluated_at": "2026-06-14T21:05:04+00:00"
+}

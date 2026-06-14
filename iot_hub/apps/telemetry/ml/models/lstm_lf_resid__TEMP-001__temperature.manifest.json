@@ -1,0 +1,14 @@
+{
+  "name": "lstm_lf_resid",
+  "version": 1,
+  "hyperparams": {
+    "window": 144,
+    "epochs": 100,
+    "lr": 0.001,
+    "hidden": 32,
+    "seasonal_periods": 144,
+    "random_state": 42,
+    "name": "lstm_lf_resid"
+  },
+  "sha": "7947edbd1e3dd01477e00a02f0e111774d9a54ebe99ac0c6184a0ac76b1c68d6"
+}

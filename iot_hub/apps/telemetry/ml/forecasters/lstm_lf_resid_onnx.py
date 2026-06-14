@@ -26,7 +26,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from ..dataset import TimeSeries
-from ..forecast_base import Forecaster, ForecastResult, future_timestamps
+from ..forecast_base import Forecaster, ForecastResult, future_timestamps, infer_step
 from ..persistence import ModelPersistenceMixin
 from .holtwinters import HoltWintersForecaster
 
@@ -78,6 +78,54 @@ class LSTMLfResidOnnxForecaster(ModelPersistenceMixin, Forecaster):
             mean = hw_fc + resid_fc[:horizon]
 
         ts = future_timestamps(self._last_ts, self._step, horizon)
+        return ForecastResult(
+            timestamps=ts, mean=mean, lower=None, upper=None, horizon=horizon,
+            meta={"method": "lstm_lf_resid_onnx", "seasonal_periods": self.seasonal_periods,
+                  "params": {"window": self.window, "hidden": self.hidden,
+                             "random_state": self.random_state}},
+        )
+
+    def forecast_from(self, series: TimeSeries, horizon: int) -> ForecastResult:
+        """Прогноз от КОНЦА переданного ряда, а не от зашитого в .npz хвоста (инкр.7).
+
+        Граф ONNX и веса не меняются — переиспользуем ту же сессию и тот же масштаб
+        нормировки остатка `_std` (модель обучена под него). Из переданного ряда заново
+        считаем HW-скелет (тренд+сезон), остаток `r = y - hw.fitted`, уровень `r[-1]` и
+        нормированный хвост `(r[-w:]-r_level)/_std`. Так модель прогнозирует/оценивается
+        на ЛЮБЫХ данных (Render-ряд ≠ ряд обучения) — нужно для hold-out-оценки без torch.
+
+        HW здесь переобучаем на переданном ряде (statsmodels, без torch) — лёгкая
+        операция; зашитый `_hw` обучен на снимке обучения и его конец не совпал бы с
+        концом переданного ряда.
+        """
+        if self.window is None or self._std is None:
+            raise ValueError("Модель не загружена: вызови load(stem) перед forecast_from()")
+        if self._session is None:
+            raise ValueError(
+                "Нет ONNX-сети (ряд обучения был короче окна+горизонта): forecast_from "
+                "неприменим — используй HW напрямую.")
+        if horizon != self._horizon:
+            raise ValueError(
+                f"Горизонт зашит в ONNX-граф: обучено под {self._horizon}, "
+                f"запрошено {horizon}.")
+
+        hw = HoltWintersForecaster(seasonal_periods=self.seasonal_periods).fit(series)
+        y = np.asarray(series.values, dtype=float)
+        if len(y) < self.window:
+            raise ValueError(
+                f"Ряд короче окна ({len(y)} < {self.window}): хвост для LSTM не построить.")
+        r = y - hw.fitted_values()
+        r_level = float(r[-1])
+        tail = ((r[-self.window:] - r_level) / self._std).astype(np.float32)
+
+        hw_fc = np.asarray(hw.forecast(horizon).mean, dtype=float)
+        x = tail.reshape(1, self.window, 1)
+        d = self._session.run(None, {"window": x})[0].ravel()
+        mean = hw_fc + (r_level + d * self._std)[:horizon]
+
+        last_ts = series.timestamps[-1]
+        step = infer_step(series.timestamps)
+        ts = future_timestamps(last_ts, step, horizon)
         return ForecastResult(
             timestamps=ts, mean=mean, lower=None, upper=None, horizon=horizon,
             meta={"method": "lstm_lf_resid_onnx", "seasonal_periods": self.seasonal_periods,

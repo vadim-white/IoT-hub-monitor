@@ -96,6 +96,46 @@ def test_fit_not_supported():
         LSTMLfResidOnnxForecaster(**_OPTS).fit(_series(_trend_season()))
 
 
+def test_forecast_from_matches_forecast_on_training_series(tmp_path):
+    """forecast_from на ряде обучения ≈ forecast() (инкр.7).
+
+    forecast() читает зашитый в .npz хвост (снимок обучения); forecast_from(тот же ряд)
+    пересчитывает хвост заново. На идентичном ряде оба должны дать почти то же —
+    подтверждает корректность пересчёта хвоста/уровня из переданного ряда.
+    """
+    s = _series(_trend_season())
+    torch_model = LSTMLevelFixResidualForecaster(**_OPTS).fit(s)
+    torch_model.forecast(_H)
+    stem = tmp_path / "lstm_lf_resid__d__m"
+    torch_model.save(stem)
+    torch_model.export_onnx(stem)
+
+    onnx_model = LSTMLfResidOnnxForecaster(**_OPTS).load(stem)
+    base = onnx_model.forecast(_H)
+    from_series = onnx_model.forecast_from(s, _H)
+    # HW переобучается на переданном ряде (тот же ряд) → допускаем малое расхождение
+    np.testing.assert_allclose(from_series.mean, base.mean, rtol=1e-3, atol=1e-2)
+
+
+def test_forecast_from_holdout_shape_and_timestamps(tmp_path):
+    """forecast_from на hold-out: форма horizon, timestamps от КОНЦА переданного среза."""
+    s = _series(_trend_season())
+    torch_model = LSTMLevelFixResidualForecaster(**_OPTS).fit(s)
+    torch_model.forecast(_H)
+    stem = tmp_path / "lstm_lf_resid__d__m"
+    torch_model.save(stem)
+    torch_model.export_onnx(stem)
+
+    onnx_model = LSTMLfResidOnnxForecaster(**_OPTS).load(stem)
+    cut = len(s.values) - _H
+    past = TimeSeries(timestamps=s.timestamps[:cut], values=s.values[:cut])
+    fc = onnx_model.forecast_from(past, _H)
+    assert fc.mean.shape == (_H,)
+    # первый прогнозный timestamp = последний timestamp среза + шаг
+    step = s.timestamps[1] - s.timestamps[0]
+    assert fc.timestamps[0] == past.timestamps[-1] + step
+
+
 def test_no_torch_in_inference_module():
     """Sanity: модуль инференса не тянет torch (смысл инкр.5 — прод без torch).
 

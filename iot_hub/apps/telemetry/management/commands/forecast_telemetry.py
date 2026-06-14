@@ -25,7 +25,7 @@ class Command(BaseCommand):
         parser.add_argument("--device", default=None)
         parser.add_argument("--metric", default=None)
         parser.add_argument("--method", default="naive",
-                            help="naive, holtwinters, lstm, lstm_lf_resid")
+                            help="naive, holtwinters, lstm, lstm_lf_resid, auto")
         parser.add_argument("--horizon", type=int, default=36,
                             help="горизонт прогноза в точках (36 = 6ч при шаге 10мин)")
         parser.add_argument("--seasonal-periods", type=int, default=144,
@@ -53,6 +53,10 @@ class Command(BaseCommand):
                             help="--write-alerts: грузить веса финальной модели из ml/models/")
         parser.add_argument("--save-cache", action="store_true",
                             help="--use-cache: пересохранить веса после обучения на miss")
+        # авто-выбор (инкр.6): --method auto
+        parser.add_argument("--reselect", action="store_true",
+                            help="--method auto: форсировать переоценку HW vs LSTM на hold-out "
+                                 "(готовые веса, без torch) вместо чтения готового selection-файла")
 
     def handle(self, *args, **opts):
         qs = Device.objects.prefetch_related("metrics")
@@ -74,23 +78,30 @@ class Command(BaseCommand):
                 if len(series) < opts["initial_train"] + opts["horizon"]:
                     continue
 
-                factory = lambda: build_forecaster(
-                    opts["method"], **self._method_params(opts))
+                # --method auto: per (device, metric) выбираем реальный метод оценкой
+                # ГОТОВЫХ весов на hold-out (без torch, инкр.7). Возвращает метод для
+                # backtest/алертов (holtwinters или lstm_lf_resid_onnx).
+                method = opts["method"]
+                if method == "auto":
+                    method = self._auto_select(device, metric, series, opts)
+
+                factory = lambda m=method: build_forecaster(
+                    m, **self._method_params(opts, m))
                 # inference-only методы (lstm_lf_resid_onnx) не умеют fit на каждом origin —
                 # backtest для них неприменим; работают только в --use-cache (load+forecast).
                 if getattr(factory(), "inference_only", False):
                     if not opts["use_cache"]:
                         self.stderr.write(self.style.ERROR(
-                            f"Метод '{opts['method']}' — только инференс: требуется "
-                            "--use-cache (backtest невозможен, нужен готовый артефакт)."))
-                        return
+                            f"Метод '{method}' — только инференс: требуется --use-cache "
+                            f"({device.serial_number}/{metric.metric_type} пропущен)."))
+                        continue
                 else:
                     res = rolling_origin_backtest(
                         factory, series, horizon=opts["horizon"],
                         initial_train=opts["initial_train"], step=opts["step"],
                         max_origins=opts["max_origins"])
                     if res["n_origins"]:
-                        results.append((device, metric, res))
+                        results.append((device, metric, method, res))
 
                 if opts["write_alerts"]:
                     alerts_created += self._write_forecast_alert(
@@ -112,8 +123,46 @@ class Command(BaseCommand):
         else:
             self._report_text(results, opts)
 
-    def _method_params(self, opts) -> dict:
-        return forecaster_params(opts["method"], opts)
+    def _method_params(self, opts, method=None) -> dict:
+        return forecaster_params(method or opts["method"], opts)
+
+    def _auto_select(self, device, metric, series, opts) -> str:
+        """--method auto: оценка готовых весов на hold-out (БЕЗ torch, инкр.7) → метод.
+
+        HW переобучается на срезе (statsmodels), LSTM — готовый ONNX (forecast_from);
+        сравниваем MAE на hold-out, выбираем лучший. Оценка дёшева и без torch →
+        выполняется всегда, в т.ч. на Render: выбор честен по фактическому ряду.
+        --reselect форсирует пересчёт даже при наличии selection-файла (иначе он
+        просто перезаписывается свежей оценкой — она недорогая).
+        """
+        from iot_hub.apps.telemetry.ml.forecaster_select import (
+            evaluate_and_select, load_selection, onnx_available,
+            resolve_inference_method, save_selection, selection_key,
+        )
+
+        sel_path = selection_key(device.serial_number, metric.metric_type)
+        sn, mt = device.serial_number, metric.metric_type
+
+        sel = None if opts["reselect"] else load_selection(sel_path)
+        if sel is None:
+            sel = evaluate_and_select(
+                series, device_sn=sn, metric_type=mt,
+                horizon=opts["horizon"], seasonal_periods=opts["seasonal_periods"])
+            save_selection(sel_path, sel)
+            self.stdout.write(self.style.SUCCESS(
+                f"  [auto] {sn}/{mt}: best={sel['best_method']} "
+                f"(mae_hw={sel['mae_hw']} mae_lstm={sel['mae_lstm']}) → {sel_path.name}"))
+        else:
+            # кеш-хит (типичный Render-сценарий --use-cache): всё равно показываем выбор
+            self.stdout.write(
+                f"  [auto] {sn}/{mt}: best={sel['best_method']} (из selection-файла)")
+
+        has_onnx = onnx_available(sn, mt)
+        method = resolve_inference_method(sel, onnx_available=has_onnx)
+        if sel.get("best_method") == "lstm_lf_resid" and not has_onnx:
+            self.stdout.write(self.style.WARNING(
+                f"  [auto] {sn}/{mt}: выбран LSTM, но .onnx не найден → fallback на holtwinters"))
+        return method
 
     def _final_model(self, factory, series, device, metric, opts):
         """Финальная модель для предиктивного алерта: с --use-cache грузит веса,
@@ -198,13 +247,12 @@ class Command(BaseCommand):
             },
         )
         return 1 if created else 0
-        return 0
 
     def _report_text(self, results, opts):
-        for device, metric, res in results:
+        for device, metric, method, res in results:
             self.stdout.write(
                 f"\n{device.serial_number} / {metric.metric_type}  "
-                f"(метод={opts['method']}, горизонт={opts['horizon']}, "
+                f"(метод={method}, горизонт={opts['horizon']}, "
                 f"origins={res['n_origins']})")
             self.stdout.write(
                 f"  MAE={res['mae']:.3f}  RMSE={res['rmse']:.3f}  sMAPE={res['mape']:.1f}%")
@@ -213,10 +261,10 @@ class Command(BaseCommand):
         payload = [
             {
                 "device": d.serial_number, "metric": m.metric_type,
-                "method": opts["method"], "horizon": opts["horizon"],
+                "method": method, "horizon": opts["horizon"],
                 "mae": round(r["mae"], 4), "rmse": round(r["rmse"], 4),
                 "smape": round(r["mape"], 2), "n_origins": r["n_origins"],
             }
-            for d, m, r in results
+            for d, m, method, r in results
         ]
         self.stdout.write(json.dumps(payload, ensure_ascii=False, indent=2))

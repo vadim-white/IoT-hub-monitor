@@ -1,0 +1,9 @@
+{
+  "best_method": "holtwinters",
+  "mae_hw": 0.6315,
+  "mae_lstm": 0.6762,
+  "holdout": 36,
+  "horizon": 36,
+  "eval": "holdout_ready_weights",
+  "evaluated_at": "2026-06-14T21:04:57+00:00"
+}

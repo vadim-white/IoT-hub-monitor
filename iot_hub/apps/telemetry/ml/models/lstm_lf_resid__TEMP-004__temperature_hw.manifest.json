@@ -1,0 +1,12 @@
+{
+  "name": "holtwinters",
+  "version": 1,
+  "hyperparams": {
+    "seasonal_periods": 144,
+    "trend": "add",
+    "seasonal": "add",
+    "z": 1.96,
+    "name": "holtwinters"
+  },
+  "sha": "8cc7a17071f80efa8ec7a333a8b6858adc4bdb470f6b7b4f233072155155ffcf"
+}

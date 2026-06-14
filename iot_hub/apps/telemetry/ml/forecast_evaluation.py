@@ -38,14 +38,18 @@ def forecast_point_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> tuple[floa
     return mae, rmse, mape
 
 
-def _slice_series(series: TimeSeries, end: int) -> TimeSeries:
-    """Срез series[:end] — ТОЛЬКО прошлое относительно origin."""
+def slice_series(series: TimeSeries, end: int) -> TimeSeries:
+    """Срез series[:end] — ТОЛЬКО прошлое относительно origin/точки отсечения."""
     return TimeSeries(
         timestamps=series.timestamps[:end],
         values=series.values[:end],
         labels=None if series.labels is None else series.labels[:end],
         anomaly_types=None if series.anomaly_types is None else series.anomaly_types[:end],
     )
+
+
+# обратная совместимость для внутреннего вызова в rolling_origin_backtest
+_slice_series = slice_series
 
 
 def rolling_origin_backtest(

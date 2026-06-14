@@ -220,10 +220,15 @@ def main():
                 "--contamination 0.01 --threshold 0.0 --tail 2000 --write-alerts",
                 f"ML[{sn}]: детекция (IsolationForest) → ml_anomaly",
             )
+            # авто-выбор (инкр.6–7): --method auto оценивает ГОТОВЫЕ веса на hold-out
+            # БЕЗ torch (HW переобучается на срезе, LSTM — готовый ONNX forecast_from),
+            # выбирает лучший по MAE. --reselect → пересчёт на ФАКТИЧЕСКОМ Render-ряде
+            # (свежие синтетические данные), в лог пишется best=... (mae_hw=... mae_lstm=...).
+            # Нет .onnx → mae_lstm=None → тихий HW. Закоммиченный selection перезапишется.
             run_command(
                 f"python manage.py forecast_telemetry --device {sn} "
-                "--metric temperature --method holtwinters --write-alerts",
-                f"ML[{sn}]: прогноз (Holt-Winters) → ml_forecast",
+                "--metric temperature --method auto --use-cache --reselect --write-alerts",
+                f"ML[{sn}]: прогноз (auto: ONNX-LSTM/HW) → ml_forecast",
             )
 
     # Start gunicorn
