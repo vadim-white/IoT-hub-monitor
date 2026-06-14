@@ -38,7 +38,7 @@ class CacheMismatchError(Exception):
 
 
 def model_dir() -> Path:
-    """Каталог артефактов, создаётся при первом обращении."""
+    """Корневой каталог артефактов, создаётся при первом обращении."""
     ML_MODELS_DIR.mkdir(parents=True, exist_ok=True)
     return ML_MODELS_DIR
 
@@ -50,9 +50,13 @@ def _slug(value) -> str:
 
 
 def model_key(name: str, device=None, metric=None) -> Path:
-    """Детерминированный stem артефакта: <models>/<name>__<device>__<metric>."""
-    stem = f"{_slug(name)}__{_slug(device)}__{_slug(metric)}"
-    return model_dir() / stem
+    """Детерминированный stem артефакта: <models>/<device>/<name>__<metric>.
+
+    Артефакты сгруппированы по устройству (подпапка) — device НЕ дублируется в имени
+    файла, он задан папкой. Каталог устройства создаётся при первом обращении."""
+    device_dir = model_dir() / _slug(device)
+    device_dir.mkdir(parents=True, exist_ok=True)
+    return device_dir / f"{_slug(name)}__{_slug(metric)}"
 
 
 def hyperparams(model) -> dict:

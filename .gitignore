@@ -60,15 +60,17 @@ iot_hub/apps/telemetry/ml/models/*
 ml_models.zip
 
 # ИСКЛЮЧЕНИЕ (Фаза 4 инкр.6–7): боевые артефакты lstm_lf_resid для 4 ML-устройств
-# Render (TEMP-001/004/006/008) коммитим в репо — иначе .onnx не доезжает на Render
-# (эфемерный диск, стирается при редеплое). .pt НЕ включаем: на проде инференс через
-# ONNX без torch; .pt нужен только локально для переэкспорта/переобучения.
-!iot_hub/apps/telemetry/ml/models/lstm_lf_resid__TEMP-001__temperature*
-!iot_hub/apps/telemetry/ml/models/lstm_lf_resid__TEMP-004__temperature*
-!iot_hub/apps/telemetry/ml/models/lstm_lf_resid__TEMP-006__temperature*
-!iot_hub/apps/telemetry/ml/models/lstm_lf_resid__TEMP-008__temperature*
-# .pt всё равно исключаем (даже для 4 устройств) — на проде не нужен
-iot_hub/apps/telemetry/ml/models/*.pt
+# Render коммитим в репо — иначе .onnx не доезжает на Render (эфемерный диск,
+# стирается при редеплое). Артефакты сгруппированы по устройству: models/TEMP-XXX/.
+# Сначала разрешаем папку устройства, затем её содержимое (** — вложенность).
+# .pt НЕ включаем: на проде инференс через ONNX без torch; .pt только локально.
+!iot_hub/apps/telemetry/ml/models/TEMP-001/
+!iot_hub/apps/telemetry/ml/models/TEMP-004/
+!iot_hub/apps/telemetry/ml/models/TEMP-006/
+!iot_hub/apps/telemetry/ml/models/TEMP-008/
+!iot_hub/apps/telemetry/ml/models/TEMP-00*/**
+# .pt всё равно исключаем (даже в подпапках устройств) — на проде не нужен
+iot_hub/apps/telemetry/ml/models/**/*.pt
 
 # Выгрузки телеметрии для обучения в Colab (Фаза 4 — export_training_data).
 training_data.csv

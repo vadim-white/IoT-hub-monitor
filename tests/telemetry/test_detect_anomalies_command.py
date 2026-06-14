@@ -112,7 +112,8 @@ class TestDetectAnomaliesCommand(TestCase):
                              "--metric", "temperature", "--method", "iforest",
                              "--window", "24", stdout=train_out)
                 assert "Обучено и сохранено моделей: 1" in train_out.getvalue()
-                assert (Path(d) / "iforest__DEV001__temperature.manifest.json").exists()
+                # схема инкр.7: <models>/<device>/<name>__<metric>.manifest.json
+                assert (Path(d) / "DEV001" / "iforest__temperature.manifest.json").exists()
 
                 # повторный детект с --use-cache грузит веса
                 det_out = StringIO()

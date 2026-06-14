@@ -79,11 +79,10 @@ class Command(BaseCommand):
                     continue
 
                 # --method auto: per (device, metric) выбираем реальный метод оценкой
-                # ГОТОВЫХ весов на hold-out (без torch, инкр.7). Возвращает метод для
-                # backtest/алертов (holtwinters или lstm_lf_resid_onnx).
-                method = opts["method"]
-                if method == "auto":
-                    method = self._auto_select(device, metric, series, opts)
+                # ГОТОВЫХ весов на hold-out (без torch, инкр.7). Возвращает метод для алертов.
+                is_auto = opts["method"] == "auto"
+                method = self._auto_select(device, metric, series, opts) \
+                    if is_auto else opts["method"]
 
                 factory = lambda m=method: build_forecaster(
                     m, **self._method_params(opts, m))
@@ -95,7 +94,10 @@ class Command(BaseCommand):
                             f"Метод '{method}' — только инференс: требуется --use-cache "
                             f"({device.serial_number}/{metric.metric_type} пропущен)."))
                         continue
-                else:
+                elif not is_auto:
+                    # backtest — только для ЯВНОГО метода (научный отчёт MAE/RMSE/sMAPE).
+                    # При auto оценка уже сделана в _auto_select (hold-out, без переобучения) —
+                    # повторный 10-origin backtest дал бы второй, расходящийся MAE в логе.
                     res = rolling_origin_backtest(
                         factory, series, horizon=opts["horizon"],
                         initial_train=opts["initial_train"], step=opts["step"],
@@ -111,10 +113,10 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(
                 f"\nСоздано предиктивных алертов: {alerts_created}"))
 
-        # inference-only методы не дают backtest-результатов (см. выше) — их вывод =
-        # только алерты. Пустой results для них норма, не ошибка «нет рядов».
+        # auto и inference-only методы не дают backtest-результатов (см. выше) — их вывод =
+        # выбор/алерты (уже залогированы). Пустой results для них норма, не «нет рядов».
         if not results:
-            if not opts["write_alerts"]:
+            if not opts["write_alerts"] and opts["method"] != "auto":
                 self.stderr.write(self.style.ERROR("Нет рядов достаточной длины"))
             return
 

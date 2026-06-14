@@ -39,9 +39,12 @@ def test_model_key_deterministic_and_safe(tmp_path):
     k1 = model_key("iforest", "TEMP-001", "temperature")
     k2 = model_key("iforest", "TEMP-001", "temperature")
     assert k1 == k2
-    assert k1.name == "iforest__TEMP-001__temperature"
+    # схема: <models>/<device>/<name>__<metric> — device задаёт подпапку
+    assert k1.name == "iforest__temperature"
+    assert k1.parent.name == "TEMP-001"
     # None → "all"; небезопасные символы → '-'
-    assert model_key("zscore", None, "a/b c").name == "zscore__all__a-b-c"
+    k3 = model_key("zscore", None, "a/b c")
+    assert k3.name == "zscore__a-b-c" and k3.parent.name == "all"
 
 
 def test_sha_changes_with_params():
