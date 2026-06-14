@@ -15,24 +15,6 @@ from ..forecast_base import Forecaster, ForecastResult, future_timestamps, infer
 from ..persistence import ModelPersistenceMixin
 
 
-def _build_net(hidden: int, horizon: int):
-    """Сеть LSTM→Linear на уровне модуля — чтобы её можно было реконструировать
-    при load (state_dict требует тот же класс). torch импортируется локально."""
-    from torch import nn
-
-    class Net(nn.Module):
-        def __init__(self, hidden, horizon):
-            super().__init__()
-            self.lstm = nn.LSTM(1, hidden, batch_first=True)
-            self.head = nn.Linear(hidden, horizon)
-
-        def forward(self, x):
-            out, _ = self.lstm(x)
-            return self.head(out[:, -1, :])
-
-    return Net(hidden, horizon)
-
-
 @dataclass
 class LSTMForecaster(ModelPersistenceMixin, Forecaster):
     window: int = 144
@@ -67,7 +49,7 @@ class LSTMForecaster(ModelPersistenceMixin, Forecaster):
         return self
 
     def _build_and_train(self, horizon: int):
-        from ..torch_utils import set_torch_determinism
+        from ..torch_utils import build_lstm_seq2seq, set_torch_determinism
 
         torch = self._torch
         # seed здесь, а не только в fit: после load() (без fit) ленивое обучение
@@ -87,7 +69,7 @@ class LSTMForecaster(ModelPersistenceMixin, Forecaster):
         X = torch.tensor(np.array(X), dtype=torch.float32).unsqueeze(-1)  # (N, w, 1)
         Y = torch.tensor(np.array(Y), dtype=torch.float32)
 
-        model = _build_net(self.hidden, horizon)
+        model = build_lstm_seq2seq(self.hidden, horizon)
         opt = torch.optim.Adam(model.parameters(), lr=self.lr)
         loss_fn = torch.nn.MSELoss()
         model.train()
@@ -143,6 +125,8 @@ class LSTMForecaster(ModelPersistenceMixin, Forecaster):
     def _load_state(self, stem, manifest) -> None:
         import torch
 
+        from ..torch_utils import build_lstm_seq2seq
+
         self._torch = torch  # нужен forecast(); fit() здесь не вызывался
         z = np.load(f"{stem}.npz", allow_pickle=False)
         self._mean = float(z["mean"])
@@ -153,6 +137,6 @@ class LSTMForecaster(ModelPersistenceMixin, Forecaster):
         self._step = z["step"][()]
         if bool(z["has_model"]):
             self._horizon = int(z["horizon"])
-            self._model = _build_net(self.hidden, self._horizon)
-            self._model.load_state_dict(torch.load(f"{stem}.pt"))
+            self._model = build_lstm_seq2seq(self.hidden, self._horizon)
+            self._model.load_state_dict(torch.load(f"{stem}.pt", weights_only=True))
             self._model.eval()

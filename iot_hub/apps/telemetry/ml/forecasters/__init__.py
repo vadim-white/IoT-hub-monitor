@@ -25,6 +25,13 @@ try:
 except ImportError:
     pass
 
+# lstm_lf_resid требует и torch, и statsmodels (внутренний HW) — оба под try/except
+try:
+    from .lstm_level_fix_residual import LSTMLevelFixResidualForecaster
+    FORECASTER_REGISTRY["lstm_lf_resid"] = LSTMLevelFixResidualForecaster
+except ImportError:
+    pass
+
 
 def build_forecaster(method: str, **params) -> Forecaster:
     if method not in FORECASTER_REGISTRY:

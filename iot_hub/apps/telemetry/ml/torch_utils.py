@@ -54,6 +54,25 @@ def global_standardize(W: np.ndarray, stats: tuple[float, float] | None = None
     return ((W - mean) / std).astype(np.float32), stats
 
 
+def build_lstm_seq2seq(hidden: int, horizon: int) -> "nn.Module":
+    """LSTM→Linear direct multi-step: вход (N, w, 1) → выход (N, horizon).
+
+    Общая сеть для форкастеров lstm и lstm_lf_resid. На уровне модуля — чтобы
+    реконструироваться при load (state_dict требует тот же класс).
+    """
+    class LSTMSeq2Seq(nn.Module):
+        def __init__(self, hidden, horizon):
+            super().__init__()
+            self.lstm = nn.LSTM(1, hidden, batch_first=True)
+            self.head = nn.Linear(hidden, horizon)
+
+        def forward(self, x):
+            out, _ = self.lstm(x)
+            return self.head(out[:, -1, :])
+
+    return LSTMSeq2Seq(hidden, horizon)
+
+
 class MLPAutoencoder(nn.Module):
     """Undercomplete MLP-автоэнкодер: window → hidden → latent → hidden → window.
 

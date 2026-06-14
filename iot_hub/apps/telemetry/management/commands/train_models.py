@@ -34,7 +34,7 @@ class Command(BaseCommand):
                             default="detector", help="что обучаем")
         parser.add_argument("--method", default="iforest",
                             help="detector: zscore/iforest/autoencoder; "
-                                 "forecaster: naive/holtwinters/lstm")
+                                 "forecaster: naive/holtwinters/lstm/lstm_lf_resid")
         # гиперпараметры (совпадают по именам с detect_anomalies/forecast_telemetry,
         # чтобы sha кэша совпадал при последующем --use-cache)
         parser.add_argument("--window", type=int, default=24)

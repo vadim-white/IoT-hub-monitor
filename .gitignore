@@ -10,6 +10,7 @@ env/
 .DS_Store
 .idea/
 .vscode/
+.claude/
 *.swp
 *.swo
 *~
@@ -33,9 +34,32 @@ datasets/*
 # venv для аналитики/extractor (pandas+numpy, не коммитим)
 .venv-analysis/
 
+# venv для локального прогона диагностических тетрадок (torch+jupyter, Фаза 5)
+.venv-notebooks
+
+# executed-копии тетрадок (генерятся nbconvert при локальном прогоне)
+notebooks/*_executed.ipynb
+# артефакты диагностики (CSV+PNG+zip раундов, генерятся тетрадками — переносимы)
+notebooks/out*
+notebooks/*.zip
+
+# Диагностические тетрадки Фазы 5 (проверка теории AE/LSTM) — НЕ в репу.
+# В GitHub из notebooks/ идёт только train_colab.ipynb (обучение лёгкой модели) + README.
+notebooks/diag_*.ipynb
+
+# Данные для диагностических тетрадок (выгрузки export_training_data, переобучаемы).
+ae_train.csv
+lstm_train.csv
+
+
 # Обученные веса ML-моделей (бинарь, переобучаемы; Фаза 4 — train_models)
 iot_hub/apps/telemetry/ml/models/
 
 # Выгрузки телеметрии для обучения в Colab (Фаза 4 — export_training_data).
 training_data.csv
 *.training.csv
+# CSV с метриками устройств (export_training_data --output train_TEMP-XXX.csv) —
+# переобучаемы, в репо не нужны (грузятся вручную в Colab).
+train_*.csv
+
+

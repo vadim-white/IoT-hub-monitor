@@ -43,6 +43,17 @@ class HoltWintersForecaster(ModelPersistenceMixin, Forecaster):
         self._step = infer_step(series.timestamps)
         return self
 
+    def fitted_values(self) -> np.ndarray:
+        """In-sample fitted (тренд+сезон) той же длины, что обучающий ряд.
+
+        Публичный доступ к `_fit.fittedvalues` для гибридных моделей (lstm_lf_resid
+        учит остаток `y - fitted`). statsmodels с heuristic-инициализацией не режет
+        ряд, но длину проверяем явно — рассинхрон → понятная ошибка, не молчаливый сбой.
+        """
+        if self._fit is None:
+            raise ValueError("Модель не обучена: вызовите fit()")
+        return np.asarray(self._fit.fittedvalues, dtype=float)
+
     def forecast(self, horizon: int) -> ForecastResult:
         mean = np.asarray(self._fit.forecast(horizon), dtype=float)
         band = self.z * self._resid_std

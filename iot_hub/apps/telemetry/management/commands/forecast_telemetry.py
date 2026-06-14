@@ -25,7 +25,7 @@ class Command(BaseCommand):
         parser.add_argument("--device", default=None)
         parser.add_argument("--metric", default=None)
         parser.add_argument("--method", default="naive",
-                            help="naive, holtwinters, lstm")
+                            help="naive, holtwinters, lstm, lstm_lf_resid")
         parser.add_argument("--horizon", type=int, default=36,
                             help="горизонт прогноза в точках (36 = 6ч при шаге 10мин)")
         parser.add_argument("--seasonal-periods", type=int, default=144,

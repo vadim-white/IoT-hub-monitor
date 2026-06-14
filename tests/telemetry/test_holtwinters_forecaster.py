@@ -44,3 +44,14 @@ def test_deterministic():
     r1 = HoltWintersForecaster(seasonal_periods=24).fit(s).forecast(12)
     r2 = HoltWintersForecaster(seasonal_periods=24).fit(s).forecast(12)
     np.testing.assert_allclose(r1.mean, r2.mean)
+
+
+def test_fitted_values_length():
+    """fitted_values() (публичный API для гибридов) той же длины, что обучающий ряд."""
+    values = 50 + 5 * np.sin(2 * np.pi * np.arange(200) / 24) + np.arange(200) * 0.05
+    s = _series(values)
+    hw = HoltWintersForecaster(seasonal_periods=24).fit(s)
+    fitted = hw.fitted_values()
+    assert fitted.shape == (200,)
+    # остаток (то, на чём учится lstm_lf_resid) имеет ~нулевое среднее
+    assert abs(float((values - fitted).mean())) < 1.0
