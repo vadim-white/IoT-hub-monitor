@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IoT Hub Monitor</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vanta/0.5.24/vanta.net.min.js"></script>
     {% load static %}
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -62,8 +64,14 @@
             display: flex; align-items: center; justify-content: center;
             background: var(--dark);
         }
-        #hero-canvas {
+        #hero-vanta {
             position: absolute; inset: 0; width: 100%; height: 100%;
+            z-index: 0;
+        }
+        /* fade Vanta net into the dark edges so text stays readable */
+        #hero-vanta::after {
+            content: ''; position: absolute; inset: 0; z-index: 1;
+            background: radial-gradient(ellipse at center, transparent 30%, var(--dark) 95%);
             pointer-events: none;
         }
         .hero-glow {
@@ -366,7 +374,7 @@
 <!-- HERO (pinned) -->
 <div class="hero-pin" id="hero-pin">
     <div class="hero-sticky">
-        <canvas id="hero-canvas"></canvas>
+        <div id="hero-vanta"></div>
         <div class="hero-glow"></div>
 
         <!-- main content (fades out on scroll) -->
@@ -501,40 +509,18 @@
 const navbar = document.getElementById('navbar');
 window.addEventListener('scroll', () => navbar.classList.toggle('solid', scrollY > 30), {passive:true});
 
-// ── canvas dot grid ──
+// ── Vanta NET 3D background (replaces the old canvas dot-grid) ──
 (function(){
-    const c = document.getElementById('hero-canvas');
-    const ctx = c.getContext('2d');
-    let W, H, dots;
-    const SP = 36, R = 1.1, INF = 120;
-    const mouse = {x:-9999, y:-9999};
-    function resize(){ W=c.width=c.offsetWidth; H=c.height=c.offsetHeight; build(); }
-    function build(){
-        dots=[];
-        for(let r=0;r<=Math.ceil(H/SP)+1;r++)
-            for(let cc=0;cc<=Math.ceil(W/SP)+1;cc++)
-                dots.push({x:cc*SP, y:r*SP, o:0.12+Math.random()*0.18});
-    }
-    const heroSticky = c.parentElement;
-    heroSticky.addEventListener('mousemove',e=>{const r=c.getBoundingClientRect();mouse.x=e.clientX-r.left;mouse.y=e.clientY-r.top;});
-    heroSticky.addEventListener('mouseleave',()=>{mouse.x=-9999;mouse.y=-9999;});
-    let t=0;
-    function draw(){
-        ctx.clearRect(0,0,W,H); t+=0.007;
-        for(const d of dots){
-            const dx=d.x-mouse.x,dy=d.y-mouse.y,dist=Math.sqrt(dx*dx+dy*dy);
-            const boost=dist<INF?(1-dist/INF)*0.65:0;
-            const wave=Math.sin(t+d.x*0.022+d.y*0.016)*0.07;
-            const a=Math.min(1,d.o+boost+wave);
-            ctx.beginPath();
-            ctx.arc(d.x,d.y,R+boost*1.5,0,Math.PI*2);
-            ctx.fillStyle=`rgba(129,140,248,${a})`;
-            ctx.fill();
-        }
-        requestAnimationFrame(draw);
-    }
-    window.addEventListener('resize',resize,{passive:true});
-    resize(); draw();
+    if (!window.VANTA || !window.THREE) return; // CDN failed → hero just stays dark
+    VANTA.NET({
+        el: '#hero-vanta',
+        color: 0x818cf8,
+        backgroundColor: 0x07070d,
+        points: 11,
+        maxDistance: 22,
+        spacing: 17,
+        showDots: true
+    });
 })();
 
 // ── hero title word reveal ──

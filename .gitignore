@@ -79,4 +79,6 @@ training_data.csv
 # переобучаемы, в репо не нужны (грузятся вручную в Colab).
 train_*.csv
 
+design-lab
+
 
